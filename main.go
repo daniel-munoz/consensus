@@ -14,6 +14,8 @@ import (
 	"google.golang.org/genai"
 )
 
+var inputReader io.Reader = os.Stdin
+
 func main() {
 	provider := selectProvider()
 	model := selectModel(provider)
@@ -49,7 +51,7 @@ func selectProvider() string {
 	fmt.Println("3) Gemini")
 	fmt.Print("Enter choice: ")
 	var choice int
-	if _, err := fmt.Scanln(&choice); err != nil {
+	if _, err := fmt.Fscanln(inputReader, &choice); err != nil {
 		fmt.Fprintf(os.Stderr, "Invalid input: %v\nDefaulting to OpenAI\n", err)
 		return "OpenAI"
 	}
@@ -69,13 +71,13 @@ func selectProvider() string {
 func selectModel(provider string) string {
 	fmt.Printf("Enter the %s model you'd like to use: ", provider)
 	var model string
-	fmt.Scanln(&model)
+	fmt.Fscanln(inputReader, &model)
 	return strings.TrimSpace(model)
 }
 
 func readPrompt() string {
 	fmt.Print("Enter your prompt: ")
-	reader := bufio.NewReader(os.Stdin)
+	reader := bufio.NewReader(inputReader)
 	prompt, err := reader.ReadString('\n')
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to read prompt: %v\n", err)
