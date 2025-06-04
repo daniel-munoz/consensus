@@ -8,7 +8,7 @@ A simple CLI tool to send prompts to AI providers (OpenAI, Anthropic, Gemini).
 - Environment variables:
   - `OPENAI_API_KEY` for OpenAI API.
   - `ANTHROPIC_API_KEY` for Anthropic API.
-  - `GOOGLE_API_KEY` for Google Gemini API.
+  - `GEMINI_API_KEY` for Google Gemini API.
 
 ## Usage
 
@@ -20,4 +20,4 @@ go run main.go
 
 You'll be prompted to select a provider, enter a model name, and input your prompt. The response from the selected AI model will then be displayed.
 
-> **Note:** When using Anthropic, your prompt will be automatically wrapped with the required prefixes (`\n\nHuman:` and `\n\nAssistant:`) as per the Anthropic API specification.
+> **Note:** Anthropic prompts are sent directly, without adding `\n\nHuman:` or `\n\nAssistant:` prefixes.
