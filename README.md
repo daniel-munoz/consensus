@@ -19,5 +19,3 @@ go run main.go
 ```
 
 You'll be prompted to select a provider, enter a model name, and input your prompt. The response from the selected AI model will then be displayed.
-
-> **Note:** Anthropic prompts are sent directly, without adding `\n\nHuman:` or `\n\nAssistant:` prefixes.
