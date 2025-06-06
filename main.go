@@ -10,6 +10,7 @@ import (
 
 	"github.com/daniel-munoz/consensus/ai"
 	"github.com/daniel-munoz/consensus/file"
+	"github.com/google/uuid"
 )
 
 var inputReader io.Reader = os.Stdin
@@ -36,8 +37,6 @@ func readPrompt() string {
 }
 
 func main() {
-	request := readPrompt()
-
 	var (
 		prompt    string
 		responses = make(chan Response)
@@ -45,9 +44,21 @@ func main() {
 		err       error
 	)
 
+	request := readPrompt()
+
+	// Generate UUID for this session
+	uuid := uuid.NewString()
+
+	file.Create(file.ResponseParams{
+		Folder:  "responses",
+		ID:      uuid,
+		Context: "request",
+		Content: request,
+	})
+
 	developerInstructions := masterPrompt
 
-	fmt.Println("Creating final prompt")
+	fmt.Printf("Creating final prompt for request %s\n", uuid)
 
 	requestToPromptText := fmt.Sprintf("Create the best prompt to address the following request: %s", request)
 	prompt, err = ai.OpenAI{}.Send(requestToPromptText, &developerInstructions)
@@ -56,7 +67,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println(prompt)
+	file.Create(file.ResponseParams{
+		Folder:  "responses",
+		ID:      uuid,
+		Context: "prompt",
+		Content: prompt,
+	})
 
 	waitGroup := sync.WaitGroup{}
 
@@ -77,7 +93,13 @@ func main() {
 
 	go func() {
 		for response := range responses {
-			if err := file.Create(response.Provider, response.Text); err != nil {
+			params := file.ResponseParams{
+				Folder:  "responses",
+				ID:      uuid,
+				Context: response.Provider,
+				Content: response.Text,
+			}
+			if err := file.Create(params); err != nil {
 				fmt.Fprintf(os.Stderr, "Error creating file for %s: %v\n", response.Provider, err)
 			}
 		}
