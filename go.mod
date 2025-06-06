@@ -4,6 +4,7 @@ go 1.24.3
 
 require (
 	github.com/anthropics/anthropic-sdk-go v1.4.0
+	github.com/google/uuid v1.6.0
 	google.golang.org/genai v1.8.0
 )
 

@@ -1,2 +1,3 @@
 consensus
 .gocache
+responses/*.txt
