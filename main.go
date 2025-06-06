@@ -47,18 +47,18 @@ func main() {
 	request := readPrompt()
 
 	// Generate UUID for this session
-	uuid := uuid.NewString()
+	id := uuid.NewString()
 
 	file.Create(file.ResponseParams{
 		Folder:  "responses",
-		ID:      uuid,
+		ID:      id,
 		Context: "request",
 		Content: request,
 	})
 
 	developerInstructions := masterPrompt
 
-	fmt.Printf("Creating final prompt for request %s\n", uuid)
+	fmt.Printf("Creating final prompt for request %s\n", id)
 
 	requestToPromptText := fmt.Sprintf("Create the best prompt to address the following request: %s", request)
 	prompt, err = ai.OpenAI{}.Send(requestToPromptText, &developerInstructions)
@@ -69,7 +69,7 @@ func main() {
 
 	file.Create(file.ResponseParams{
 		Folder:  "responses",
-		ID:      uuid,
+		ID:      id,
 		Context: "prompt",
 		Content: prompt,
 	})
@@ -95,7 +95,7 @@ func main() {
 		for response := range responses {
 			params := file.ResponseParams{
 				Folder:  "responses",
-				ID:      uuid,
+				ID:      id,
 				Context: response.Provider,
 				Content: response.Text,
 			}

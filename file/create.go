@@ -5,6 +5,7 @@ import (
 	"os"
 )
 
+// ResponseParams holds the parameters needed to create a file.
 type ResponseParams struct {
 	Folder  string
 	ID      string
