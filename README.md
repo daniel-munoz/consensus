@@ -18,4 +18,12 @@ Run the tool:
 go run main.go
 ```
 
-You'll be prompted to select a provider, enter a model name, and input your prompt. The response from the selected AI model will then be displayed.
+## How it works
+
+The `consensus` tool follows these steps:
+
+1. Read a prompt from standard input.
+2. Use a `master prompt` to craft an optimized, detailed prompt via OpenAI.
+3. Send the optimized prompt concurrently to multiple AI providers (OpenAI, Anthropic, and Gemini).
+4. Save each provider’s response to a separate text file (e.g., `openai.txt`, `anthropic.txt`, `gemini.txt`) for easy comparison.
+
