@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/daniel-munoz/consensus/ai"
-	"github.com/daniel-munoz/consensus/file"
+	"github.com/daniel-munoz/consensus/output"
 	"github.com/google/uuid"
 )
 
@@ -49,12 +49,12 @@ func main() {
 	// Generate UUID for this session
 	id := uuid.NewString()
 
-	file.Create(file.ResponseParams{
-		Folder:  "responses",
-		ID:      id,
-		Context: "request",
-		Content: request,
-	})
+	// Initialize output manager with file output
+	outputManager := output.NewManager(
+		output.NewFileOutput("responses"),
+	)
+
+	outputManager.Send(request, id, "request")
 
 	developerInstructions := masterPrompt
 
@@ -67,12 +67,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	file.Create(file.ResponseParams{
-		Folder:  "responses",
-		ID:      id,
-		Context: "prompt",
-		Content: prompt,
-	})
+	outputManager.Send(prompt, id, "prompt")
 
 	waitGroup := sync.WaitGroup{}
 
@@ -93,15 +88,7 @@ func main() {
 
 	go func() {
 		for response := range responses {
-			params := file.ResponseParams{
-				Folder:  "responses",
-				ID:      id,
-				Context: response.Provider,
-				Content: response.Text,
-			}
-			if err := file.Create(params); err != nil {
-				fmt.Fprintf(os.Stderr, "Error creating file for %s: %v\n", response.Provider, err)
-			}
+			outputManager.Send(response.Text, id, response.Provider)
 		}
 		done <- struct{}{}
 	}()
