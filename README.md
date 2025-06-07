@@ -12,19 +12,26 @@ A CLI tool that sends prompts to multiple AI providers (OpenAI, Anthropic, Gemin
 
 ## Usage
 
-Run the tool:
-
+### Interactive Mode
 ```bash
 go run main.go
 ```
-
 The tool will prompt you to enter your request, then process it through all AI providers.
+
+### Command Line Mode
+```bash
+# Using full flag name
+go run main.go -prompt "Compare the pros and cons of React vs Vue"
+
+# Using shorthand
+go run main.go -p "What are the latest trends in AI?"
+```
 
 ## How it works
 
 The `consensus` tool follows these steps:
 
-1. Prompts user for input via stdin
+1. Accepts user input via command line flags (`-prompt` or `-p`) or interactive stdin prompt
 2. Uses OpenAI with a master prompt (C.R.A.F.T. methodology) to optimize the user's request
 3. Sends the optimized prompt concurrently to all three AI providers
 4. Saves all outputs to the `responses/` directory with UUID-based filenames:
