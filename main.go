@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -37,14 +38,23 @@ func readPrompt() string {
 }
 
 func main() {
+	promptFlag := flag.String("prompt", "", "Prompt text to use instead of interactive input")
+	flag.StringVar(promptFlag, "p", "", "Prompt text to use instead of interactive input (shorthand)")
+	flag.Parse()
+
 	var (
 		prompt    string
+		request   string
 		responses = make(chan Response)
 		done      = make(chan struct{})
 		err       error
 	)
 
-	request := readPrompt()
+	if promptFlag != nil && *promptFlag != "" {
+		request = *promptFlag
+	} else {
+		request = readPrompt()
+	}
 
 	// Generate UUID for this session
 	id := uuid.NewString()
