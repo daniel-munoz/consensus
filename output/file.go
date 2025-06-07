@@ -27,4 +27,3 @@ func (f *FileOutput) Send(content, sessionID, context string) error {
 	_, err = file.WriteString(content)
 	return err
 }
-
