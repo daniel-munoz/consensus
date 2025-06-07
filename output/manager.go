@@ -33,4 +33,3 @@ func (m *Manager) Send(content, sessionID, context string) {
 
 	wg.Wait()
 }
-
