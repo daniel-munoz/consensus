@@ -2,12 +2,14 @@ package output
 
 import (
 	"errors"
+	"sync"
 	"testing"
 )
 
 type MockWriter struct {
 	name        string
 	sendError   error
+	mu          sync.Mutex
 	callCount   int
 	lastContent string
 	lastSession string
@@ -23,6 +25,8 @@ func (m *MockWriter) Name() string {
 }
 
 func (m *MockWriter) Send(content, sessionID, context string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.callCount++
 	m.lastContent = content
 	m.lastSession = sessionID
