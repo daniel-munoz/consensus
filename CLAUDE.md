@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 - **Build and run**: `go run main.go`
+- **Build and run with prompt**: `go run main.go -prompt "Your prompt here"` or `go run main.go -p "Your prompt here"`
 - **Run tests**: `go test`
 - **Build binary**: `go build`
 
@@ -13,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a CLI tool that sends prompts to multiple AI providers (OpenAI, Anthropic, Gemini) concurrently and saves their responses to separate files for comparison.
 
 ### Core Flow
-1. Reads user prompt from stdin
+1. Reads user prompt from command line flags (`-prompt` or `-p`) or interactive stdin input
 2. Uses OpenAI with a "master prompt" (defined in `const.go`) to optimize the user's prompt using the C.R.A.F.T. methodology
 3. Sends the optimized prompt concurrently to all three AI providers
 4. Saves each response to provider-named files (`openai.txt`, `anthropic.txt`, `gemini.txt`)
@@ -37,6 +38,11 @@ type Provider interface {
 - `OPENAI_API_KEY`
 - `ANTHROPIC_API_KEY` 
 - `GEMINI_API_KEY`
+
+### Command Line Usage
+- **Interactive mode**: `go run main.go` (prompts for input)
+- **Direct prompt**: `go run main.go -prompt "Your prompt here"`
+- **Shorthand**: `go run main.go -p "Your prompt here"`
 
 ### Testing
 Tests focus on input validation and error handling for missing API keys. Use `go test` to run the test suite.
