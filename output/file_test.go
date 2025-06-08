@@ -20,9 +20,9 @@ func TestFileOutput_Send(t *testing.T) {
 
 	content := "test content"
 	sessionID := "session123"
-	context := "openai"
+	producer := "openai"
 
-	err := fileOutput.Send(content, sessionID, context)
+	err := fileOutput.Send(content, sessionID, producer)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -45,7 +45,7 @@ func TestFileOutput_Send(t *testing.T) {
 func TestFileOutput_Send_InvalidDirectory(t *testing.T) {
 	fileOutput := NewFileOutput("/invalid/directory/that/does/not/exist")
 
-	err := fileOutput.Send("content", "session", "context")
+	err := fileOutput.Send("content", "session", "producer")
 	if err == nil {
 		t.Error("Expected error for invalid directory, got nil")
 	}
@@ -55,12 +55,12 @@ func TestFileOutput_Send_EmptyContent(t *testing.T) {
 	tempDir := t.TempDir()
 	fileOutput := NewFileOutput(tempDir)
 
-	err := fileOutput.Send("", "session123", "context")
+	err := fileOutput.Send("", "session123", "producer")
 	if err != nil {
 		t.Fatalf("Expected no error for empty content, got %v", err)
 	}
 
-	expectedFilename := filepath.Join(tempDir, "id-session123-context.txt")
+	expectedFilename := filepath.Join(tempDir, "id-session123-producer.txt")
 	fileContent, err := os.ReadFile(expectedFilename)
 	if err != nil {
 		t.Fatalf("Failed to read file: %v", err)
@@ -77,14 +77,14 @@ func TestFileOutput_Send_SpecialCharacters(t *testing.T) {
 
 	content := "Special chars: 你好 🌟 ñoël"
 	sessionID := "session-with-dashes"
-	context := "test_context"
+	producer := "test_producer"
 
-	err := fileOutput.Send(content, sessionID, context)
+	err := fileOutput.Send(content, sessionID, producer)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
-	expectedFilename := filepath.Join(tempDir, "id-session-with-dashes-test_context.txt")
+	expectedFilename := filepath.Join(tempDir, "id-session-with-dashes-test_producer.txt")
 	fileContent, err := os.ReadFile(expectedFilename)
 	if err != nil {
 		t.Fatalf("Failed to read file: %v", err)
@@ -101,14 +101,14 @@ func TestFileOutput_Send_LongContent(t *testing.T) {
 
 	content := strings.Repeat("A", 10000) + "\n" + strings.Repeat("B", 10000)
 	sessionID := "long-session"
-	context := "long-context"
+	producer := "long-producer"
 
-	err := fileOutput.Send(content, sessionID, context)
+	err := fileOutput.Send(content, sessionID, producer)
 	if err != nil {
 		t.Fatalf("Expected no error for long content, got %v", err)
 	}
 
-	expectedFilename := filepath.Join(tempDir, "id-long-session-long-context.txt")
+	expectedFilename := filepath.Join(tempDir, "id-long-session-long-producer.txt")
 	fileContent, err := os.ReadFile(expectedFilename)
 	if err != nil {
 		t.Fatalf("Failed to read file: %v", err)
