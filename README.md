@@ -50,6 +50,35 @@ The `consensus` tool follows these steps:
 
 ## Development
 
-- **Build and run**: `go run main.go`
-- **Run tests**: `go test`
-- **Build binary**: `go build`
+### Using Make (Recommended)
+```bash
+# Build and run
+make run
+
+# Run with a specific prompt
+make run PROMPT="Your prompt here"
+
+# Run tests
+make test
+
+# Build binary
+make build
+
+# Clean build artifacts
+make clean
+```
+
+### Direct Go Commands
+```bash
+# Build and run
+go run main.go
+
+# Build and run with prompt
+go run main.go -prompt "Your prompt here"
+
+# Run tests
+go test ./...
+
+# Build binary
+go build
+```
