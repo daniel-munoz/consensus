@@ -6,19 +6,36 @@ import (
 )
 
 type FileOutput struct {
-	BaseDir string
+	BaseDir          string
+	IgnoredProducers map[string]struct{}
 }
 
 func NewFileOutput(baseDir string) *FileOutput {
-	return &FileOutput{BaseDir: baseDir}
+	return &FileOutput{
+		BaseDir:          baseDir,
+		IgnoredProducers: make(map[string]struct{}),
+	}
 }
 
 func (f *FileOutput) Name() string {
 	return "file"
 }
 
-func (f *FileOutput) Send(content, sessionID, context string) error {
-	filename := fmt.Sprintf("%s/id-%s-%s.txt", f.BaseDir, sessionID, context)
+func (f *FileOutput) WithIgnored(producers ...string) Writer {
+	if f.IgnoredProducers == nil {
+		f.IgnoredProducers = make(map[string]struct{})
+	}
+	for _, producer := range producers {
+		f.IgnoredProducers[producer] = struct{}{}
+	}
+	return f
+}
+
+func (f *FileOutput) Send(content, sessionID, producer string) error {
+	if _, ignored := f.IgnoredProducers[producer]; ignored {
+		return nil
+	}
+	filename := fmt.Sprintf("%s/id-%s-%s.txt", f.BaseDir, sessionID, producer)
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
