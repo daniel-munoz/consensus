@@ -1,6 +1,6 @@
 module github.com/daniel-munoz/consensus
 
-go 1.24.3
+go 1.24
 
 require (
 	github.com/anthropics/anthropic-sdk-go v1.4.0
