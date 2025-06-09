@@ -82,10 +82,21 @@ func (e *EmailOutput) formatSubject(sessionID, producer string) string {
 	case "gemini":
 		return fmt.Sprintf("[Consensus AI] Session %s - Gemini Response", sessionID)
 	default:
-		return fmt.Sprintf("[Consensus AI] Session %s - %s", sessionID, strings.Title(producer))
+		return fmt.Sprintf("[Consensus AI] Session %s - %s", sessionID, toTitleCase(producer))
 	}
 }
 
+func toTitleCase(input string) string {
+	words := strings.Fields(input)
+	for i, word := range words {
+		if len(word) > 0 {
+			runes := []rune(word)
+			runes[0] = unicode.ToUpper(runes[0])
+			words[i] = string(runes)
+		}
+	}
+	return strings.Join(words, " ")
+}
 func (e *EmailOutput) formatBody(content, sessionID, producer string) string {
 	contentType := e.getContentType(producer)
 	
