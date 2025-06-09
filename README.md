@@ -1,6 +1,6 @@
 # consensus
 
-A CLI tool that sends prompts to multiple AI providers (OpenAI, Anthropic, Gemini) concurrently and saves their responses for comparison.
+A CLI tool that sends prompts to multiple AI providers (OpenAI, Anthropic, Gemini) concurrently and saves their responses for comparison. Includes optional email notifications for real-time updates.
 
 ## Requirements
 
@@ -9,6 +9,10 @@ A CLI tool that sends prompts to multiple AI providers (OpenAI, Anthropic, Gemin
   - `OPENAI_API_KEY` for OpenAI API
   - `ANTHROPIC_API_KEY` for Anthropic API
   - `GEMINI_API_KEY` for Google Gemini API
+
+### Optional Email Notifications
+- `CONSENSUS_EMAIL_PASSWORD` - App password for consensus.ai.25@gmail.com
+- `CONSENSUS_EMAIL_RECIPIENTS` - Comma-separated list of recipient emails (e.g., "user1@example.com,user2@example.com")
 
 ## Usage
 
@@ -40,13 +44,15 @@ The `consensus` tool follows these steps:
    - `id-{uuid}-OpenAI.txt` - OpenAI's response
    - `id-{uuid}-Anthropic.txt` - Anthropic's response  
    - `id-{uuid}-Gemini.txt` - Gemini's response
+5. Optionally sends HTML email notifications for each step when email is configured
 
 ## Architecture
 
 - **Provider Interface**: All AI providers implement a consistent `Provider` interface
-- **Output Manager**: Flexible output system supporting multiple writers (currently file-based)
-- **UUID Sessions**: Each run generates a unique session ID for organized file storage
+- **Output Manager**: Flexible output system supporting multiple writers (file and email)
+- **UUID Sessions**: Each run generates a unique session ID for organized file storage and email tracking
 - **Concurrent Processing**: All AI providers are queried simultaneously for faster results
+- **Email Notifications**: Optional real-time email updates with HTML formatting and provider-specific styling
 
 ## Development
 
