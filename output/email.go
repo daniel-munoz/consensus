@@ -75,7 +75,28 @@ func (e *EmailOutput) Send(content, sessionID, producer string) error {
 	subject := e.formatSubject(sessionID, producer)
 	body := e.formatBody(content, sessionID, producer)
 
-	return e.sendEmail(subject, body)
+	// Gmail SMTP configuration
+	auth := smtp.PlainAuth("", e.FromEmail, e.FromPassword, e.SMTPHost)
+
+	// Email headers and body
+	message := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
+		e.FromEmail, strings.Join(e.ToEmails, ","), subject, body)
+
+	// Send email
+	addr := fmt.Sprintf("%s:%d", e.SMTPHost, e.SMTPPort)
+	return smtp.SendMail(addr, auth, e.FromEmail, e.ToEmails, []byte(message))
+}
+
+func toTitleCase(input string) string {
+	words := strings.Fields(input)
+	for i, word := range words {
+		if len(word) > 0 {
+			runes := []rune(word)
+			runes[0] = unicode.ToUpper(runes[0])
+			words[i] = string(runes)
+		}
+	}
+	return strings.Join(words, " ")
 }
 
 func (e *EmailOutput) formatSubject(sessionID, producer string) string {
@@ -95,17 +116,6 @@ func (e *EmailOutput) formatSubject(sessionID, producer string) string {
 	}
 }
 
-func toTitleCase(input string) string {
-	words := strings.Fields(input)
-	for i, word := range words {
-		if len(word) > 0 {
-			runes := []rune(word)
-			runes[0] = unicode.ToUpper(runes[0])
-			words[i] = string(runes)
-		}
-	}
-	return strings.Join(words, " ")
-}
 func (e *EmailOutput) formatBody(content, sessionID, producer string) string {
 	contentType := e.getContentType(producer)
 
@@ -152,7 +162,7 @@ func (e *EmailOutput) getContentType(producer string) string {
 	case "gemini":
 		return "Gemini Response"
 	default:
-		return strings.Title(producer) + " Response"
+		return toTitleCase(producer) + " Response"
 	}
 }
 
@@ -170,17 +180,3 @@ func (e *EmailOutput) getProviderBadge(producer string) string {
 		return ""
 	}
 }
-
-func (e *EmailOutput) sendEmail(subject, body string) error {
-	// Gmail SMTP configuration
-	auth := smtp.PlainAuth("", e.FromEmail, e.FromPassword, e.SMTPHost)
-
-	// Email headers and body
-	message := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
-		e.FromEmail, strings.Join(e.ToEmails, ","), subject, body)
-
-	// Send email
-	addr := fmt.Sprintf("%s:%d", e.SMTPHost, e.SMTPPort)
-	return smtp.SendMail(addr, auth, e.FromEmail, e.ToEmails, []byte(message))
-}
-
