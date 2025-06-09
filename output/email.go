@@ -5,6 +5,7 @@ import (
 	"net/smtp"
 	"os"
 	"strings"
+	"unicode"
 )
 
 type EmailOutput struct {
@@ -19,7 +20,7 @@ type EmailOutput struct {
 func NewEmailOutput() *EmailOutput {
 	password := os.Getenv("CONSENSUS_EMAIL_PASSWORD")
 	recipients := os.Getenv("CONSENSUS_EMAIL_RECIPIENTS")
-	
+
 	var toEmails []string
 	if recipients != "" {
 		toEmails = strings.Split(recipients, ",")
@@ -65,7 +66,7 @@ func (e *EmailOutput) Send(content, sessionID, producer string) error {
 
 	subject := e.formatSubject(sessionID, producer)
 	body := e.formatBody(content, sessionID, producer)
-	
+
 	return e.sendEmail(subject, body)
 }
 
@@ -99,7 +100,7 @@ func toTitleCase(input string) string {
 }
 func (e *EmailOutput) formatBody(content, sessionID, producer string) string {
 	contentType := e.getContentType(producer)
-	
+
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
@@ -165,7 +166,7 @@ func (e *EmailOutput) getProviderBadge(producer string) string {
 func (e *EmailOutput) sendEmail(subject, body string) error {
 	// Gmail SMTP configuration
 	auth := smtp.PlainAuth("", e.FromEmail, e.FromPassword, e.SMTPHost)
-	
+
 	// Email headers and body
 	message := fmt.Sprintf("To: %s\r\nSubject: %s\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
 		strings.Join(e.ToEmails, ","), subject, body)
@@ -174,3 +175,4 @@ func (e *EmailOutput) sendEmail(subject, body string) error {
 	addr := fmt.Sprintf("%s:%d", e.SMTPHost, e.SMTPPort)
 	return smtp.SendMail(addr, auth, e.FromEmail, e.ToEmails, []byte(message))
 }
+
