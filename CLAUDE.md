@@ -18,11 +18,14 @@ This is a CLI tool that sends prompts to multiple AI providers (OpenAI, Anthropi
 2. Uses OpenAI with a "master prompt" (defined in `const.go`) to optimize the user's prompt using the C.R.A.F.T. methodology
 3. Sends the optimized prompt concurrently to all three AI providers
 4. Saves each response to provider-named files (`openai.txt`, `anthropic.txt`, `gemini.txt`)
+5. Optionally sends email notifications for each step (user request, optimized prompt, and AI responses)
 
 ### Key Components
 - **main.go**: Entry point with concurrent orchestration logic
 - **ai/**: Provider implementations that conform to the `Provider` interface
-- **file/create.go**: File creation utility for saving responses
+- **output/**: Output writers for file and email delivery
+  - **file.go**: File creation utility for saving responses
+  - **email.go**: Email delivery for real-time notifications
 - **const.go**: Contains the master prompt template using C.R.A.F.T. methodology
 
 ### Provider Interface
@@ -38,6 +41,10 @@ type Provider interface {
 - `OPENAI_API_KEY`
 - `ANTHROPIC_API_KEY` 
 - `GEMINI_API_KEY`
+
+#### Email Configuration (Optional)
+- `CONSENSUS_EMAIL_PASSWORD` - App password for consensus.ai.25@gmail.com
+- `CONSENSUS_EMAIL_RECIPIENTS` - Comma-separated list of recipient emails (e.g., "user1@example.com,user2@example.com")
 
 ### Command Line Usage
 - **Interactive mode**: `go run main.go` (prompts for input)

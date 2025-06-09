@@ -59,9 +59,10 @@ func main() {
 	// Generate UUID for this session
 	id := uuid.NewString()
 
-	// Initialize output manager with file output
+	// Initialize output manager with file and email output
 	outputManager := output.NewManager(
 		output.NewFileOutput("responses"),
+		output.NewEmailOutput(),
 	)
 
 	outputManager.Send(request, id, "request")
