@@ -28,6 +28,14 @@ func NewEmailOutput() *EmailOutput {
 		for i := range toEmails {
 			toEmails[i] = strings.TrimSpace(toEmails[i])
 		}
+		// Filter out empty strings
+		filteredEmails := make([]string, 0, len(toEmails))
+		for _, email := range toEmails {
+			if email != "" {
+				filteredEmails = append(filteredEmails, email)
+			}
+		}
+		toEmails = filteredEmails
 	}
 
 	return &EmailOutput{
@@ -168,8 +176,8 @@ func (e *EmailOutput) sendEmail(subject, body string) error {
 	auth := smtp.PlainAuth("", e.FromEmail, e.FromPassword, e.SMTPHost)
 
 	// Email headers and body
-	message := fmt.Sprintf("To: %s\r\nSubject: %s\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
-		strings.Join(e.ToEmails, ","), subject, body)
+	message := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
+		e.FromEmail, strings.Join(e.ToEmails, ","), subject, body)
 
 	// Send email
 	addr := fmt.Sprintf("%s:%d", e.SMTPHost, e.SMTPPort)
