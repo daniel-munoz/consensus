@@ -17,9 +17,8 @@ type EmailOutput struct {
 	IgnoredProducers map[string]struct{}
 }
 
-func NewEmailOutput() *EmailOutput {
+func NewEmailOutputWithRecipients(recipients string) *EmailOutput {
 	password := os.Getenv("CONSENSUS_EMAIL_PASSWORD")
-	recipients := os.Getenv("CONSENSUS_EMAIL_RECIPIENTS")
 
 	var toEmails []string
 	if recipients != "" {
