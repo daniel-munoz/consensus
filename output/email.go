@@ -1,13 +1,20 @@
 package output
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
 	"net/smtp"
 	"os"
 	"strings"
 	"unicode"
 )
 
+// emailHTMLTemplate defines the HTML email template with placeholders:
+// - {{.SessionID}}: unique identifier for the session
+// - {{.ContentType}}: type of content (User Request, Optimized Prompt, etc.)
+// - {{.ProviderBadge}}: HTML badge for the provider/system
+// - {{.Content}}: the actual email content (HTML-escaped for security)
 const emailHTMLTemplate = `<!DOCTYPE html>
 <html>
 <head>
@@ -27,43 +34,56 @@ const emailHTMLTemplate = `<!DOCTYPE html>
 </head>
 <body>
     <div class="header">
-        <div class="session-id">Session ID: %s</div>
-        <div class="content-type">%s</div>
-        %s
+        <div class="session-id">Session ID: {{.SessionID}}</div>
+        <div class="content-type">{{.ContentType}}</div>
+        {{.ProviderBadge}}
     </div>
-    <div class="content">%s</div>
+    <div class="content">{{.Content}}</div>
 </body>
 </html>`
 
-const (
-	emailSubjectRequest   = "%s Session %s - User Request"
-	emailSubjectPrompt    = "%s Session %s - Optimized Prompt"
-	emailSubjectOpenAI    = "%s Session %s - OpenAI Response"
-	emailSubjectAnthropic = "%s Session %s - Anthropic Response"
-	emailSubjectGemini    = "%s Session %s - Gemini Response"
-	emailSubjectDefault   = "%s Session %s - %s"
-	
-	emailBadgeOpenAI    = `<div class="provider-badge openai">OpenAI</div>`
-	emailBadgeAnthropic = `<div class="provider-badge anthropic">Anthropic</div>`
-	emailBadgeGemini    = `<div class="provider-badge gemini">Gemini</div>`
-	emailBadgeSystem    = `<div class="provider-badge system">System</div>`
-	
-	emailContentTypeRequest   = "User Request"
-	emailContentTypePrompt    = "Optimized Prompt"
-	emailContentTypeOpenAI    = "OpenAI Response"
-	emailContentTypeAnthropic = "Anthropic Response"
-	emailContentTypeGemini    = "Gemini Response"
-	emailContentTypeDefault   = "%s Response"
-)
+// subjectTemplates maps producer types to their email subject templates
+var subjectTemplates = map[string]string{
+	"request":   "%s Session %s - User Request",
+	"prompt":    "%s Session %s - Optimized Prompt",
+	"openai":    "%s Session %s - OpenAI Response",
+	"anthropic": "%s Session %s - Anthropic Response",
+	"gemini":    "%s Session %s - Gemini Response",
+}
 
+// contentTypeLabels maps producer types to their content type labels
+var contentTypeLabels = map[string]string{
+	"request":   "User Request",
+	"prompt":    "Optimized Prompt",
+	"openai":    "OpenAI Response",
+	"anthropic": "Anthropic Response",
+	"gemini":    "Gemini Response",
+}
+
+// providerBadges maps producer types to their HTML badge elements
+var providerBadges = map[string]template.HTML{
+	"openai":    template.HTML(`<div class="provider-badge openai">OpenAI</div>`),
+	"anthropic": template.HTML(`<div class="provider-badge anthropic">Anthropic</div>`),
+	"gemini":    template.HTML(`<div class="provider-badge gemini">Gemini</div>`),
+	"request":   template.HTML(`<div class="provider-badge system">System</div>`),
+	"prompt":    template.HTML(`<div class="provider-badge system">System</div>`),
+}
+
+// emailTemplateData holds the data for the email HTML template
+type emailTemplateData struct {
+	SessionID     string
+	ContentType   string
+	ProviderBadge template.HTML
+	Content       string
+}
 
 type EmailConfig struct {
-	SMTPHost         string
-	SMTPPort         int
-	FromEmail        string
-	FromName         string
-	PasswordEnvVar   string
-	SubjectPrefix    string
+	SMTPHost       string
+	SMTPPort       int
+	FromEmail      string
+	FromName       string
+	PasswordEnvVar string
+	SubjectPrefix  string
 }
 
 type EmailOutput struct {
@@ -126,7 +146,10 @@ func (e *EmailOutput) Send(content, sessionID, producer string) error {
 	}
 
 	subject := e.formatSubject(sessionID, producer)
-	body := e.formatBody(content, sessionID, producer)
+	body, err := e.formatBody(content, sessionID, producer)
+	if err != nil {
+		return fmt.Errorf("failed to format email body: %w", err)
+	}
 
 	// SMTP configuration
 	auth := smtp.PlainAuth("", e.Config.FromEmail, e.FromPassword, e.Config.SMTPHost)
@@ -153,56 +176,46 @@ func toTitleCase(input string) string {
 }
 
 func (e *EmailOutput) formatSubject(sessionID, producer string) string {
-	switch producer {
-	case "request":
-		return fmt.Sprintf(emailSubjectRequest, e.Config.SubjectPrefix, sessionID)
-	case "prompt":
-		return fmt.Sprintf(emailSubjectPrompt, e.Config.SubjectPrefix, sessionID)
-	case "openai":
-		return fmt.Sprintf(emailSubjectOpenAI, e.Config.SubjectPrefix, sessionID)
-	case "anthropic":
-		return fmt.Sprintf(emailSubjectAnthropic, e.Config.SubjectPrefix, sessionID)
-	case "gemini":
-		return fmt.Sprintf(emailSubjectGemini, e.Config.SubjectPrefix, sessionID)
-	default:
-		return fmt.Sprintf(emailSubjectDefault, e.Config.SubjectPrefix, sessionID, toTitleCase(producer))
+	if template, exists := subjectTemplates[producer]; exists {
+		return fmt.Sprintf(template, e.Config.SubjectPrefix, sessionID)
 	}
+	// Default case for unknown producers
+	return fmt.Sprintf("%s Session %s - %s", e.Config.SubjectPrefix, sessionID, toTitleCase(producer))
 }
 
-func (e *EmailOutput) formatBody(content, sessionID, producer string) string {
-	contentType := e.getContentType(producer)
-	html := fmt.Sprintf(emailHTMLTemplate, sessionID, contentType, e.getProviderBadge(producer), content)
-	return html
+func (e *EmailOutput) formatBody(content, sessionID, producer string) (string, error) {
+	tmpl, err := template.New("email").Parse(emailHTMLTemplate)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse email template: %w", err)
+	}
+
+	data := emailTemplateData{
+		SessionID:     sessionID,
+		ContentType:   e.getContentType(producer),
+		ProviderBadge: e.getProviderBadge(producer),
+		Content:       content, // Content will be HTML-escaped by the template
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("failed to execute email template: %w", err)
+	}
+
+	return buf.String(), nil
 }
 
 func (e *EmailOutput) getContentType(producer string) string {
-	switch producer {
-	case "request":
-		return emailContentTypeRequest
-	case "prompt":
-		return emailContentTypePrompt
-	case "openai":
-		return emailContentTypeOpenAI
-	case "anthropic":
-		return emailContentTypeAnthropic
-	case "gemini":
-		return emailContentTypeGemini
-	default:
-		return fmt.Sprintf(emailContentTypeDefault, toTitleCase(producer))
+	if label, exists := contentTypeLabels[producer]; exists {
+		return label
 	}
+	// Default case for unknown producers
+	return fmt.Sprintf("%s Response", toTitleCase(producer))
 }
 
-func (e *EmailOutput) getProviderBadge(producer string) string {
-	switch producer {
-	case "openai":
-		return emailBadgeOpenAI
-	case "anthropic":
-		return emailBadgeAnthropic
-	case "gemini":
-		return emailBadgeGemini
-	case "request", "prompt":
-		return emailBadgeSystem
-	default:
-		return ""
+func (e *EmailOutput) getProviderBadge(producer string) template.HTML {
+	if badge, exists := providerBadges[producer]; exists {
+		return badge
 	}
+	// Default case for unknown producers - return empty HTML
+	return template.HTML("")
 }
