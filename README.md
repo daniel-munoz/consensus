@@ -13,8 +13,8 @@ A CLI tool that sends prompts to multiple AI providers (OpenAI, Anthropic, Gemin
 ## Configuration
 
 The app uses a YAML configuration file for email settings. On first run, a default config file is created at:
-- `$XDG_CONFIG_HOME/sendmail-config/config.yml` (if XDG_CONFIG_HOME is set)
-- `~/.config/sendmail-config/config.yml` (on most systems)  
+- `$XDG_CONFIG_HOME/consensus/config.yml` (if XDG_CONFIG_HOME is set)
+- `~/.config/consensus/config.yml` (on most systems)  
 - `config.yml` (fallback in current directory)
 
 ### Default Configuration
