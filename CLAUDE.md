@@ -44,12 +44,13 @@ type Provider interface {
 
 #### Email Configuration (Optional)
 - `CONSENSUS_EMAIL_PASSWORD` - App password for consensus.ai.25@gmail.com
-- `CONSENSUS_EMAIL_RECIPIENTS` - Comma-separated list of recipient emails (e.g., "user1@example.com,user2@example.com")
 
 ### Command Line Usage
 - **Interactive mode**: `go run main.go` (prompts for input)
 - **Direct prompt**: `go run main.go -prompt "Your prompt here"`
 - **Shorthand**: `go run main.go -p "Your prompt here"`
+- **With email notifications**: `go run main.go -prompt "Your prompt here" --email-to "user1@example.com,user2@example.com"`
+- **Email shorthand**: `go run main.go -p "Your prompt here" -e "user1@example.com,user2@example.com"`
 
 ### Testing
 Tests focus on input validation and error handling for missing API keys. Use `go test` to run the test suite.

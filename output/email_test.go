@@ -6,55 +6,16 @@ import (
 	"testing"
 )
 
-func TestNewEmailOutput(t *testing.T) {
-	// Test with environment variables set
-	os.Setenv("CONSENSUS_EMAIL_PASSWORD", "test-password")
-	os.Setenv("CONSENSUS_EMAIL_RECIPIENTS", "test1@example.com,test2@example.com")
-	defer func() {
-		os.Unsetenv("CONSENSUS_EMAIL_PASSWORD")
-		os.Unsetenv("CONSENSUS_EMAIL_RECIPIENTS")
-	}()
-
-	email := NewEmailOutput()
-
-	if email.FromEmail != "consensus.ai.25@gmail.com" {
-		t.Errorf("Expected FromEmail to be consensus.ai.25@gmail.com, got %s", email.FromEmail)
-	}
-
-	if email.FromPassword != "test-password" {
-		t.Errorf("Expected FromPassword to be test-password, got %s", email.FromPassword)
-	}
-
-	if len(email.ToEmails) != 2 {
-		t.Errorf("Expected 2 recipient emails, got %d", len(email.ToEmails))
-	}
-
-	if email.ToEmails[0] != "test1@example.com" {
-		t.Errorf("Expected first email to be test1@example.com, got %s", email.ToEmails[0])
-	}
-
-	if email.ToEmails[1] != "test2@example.com" {
-		t.Errorf("Expected second email to be test2@example.com, got %s", email.ToEmails[1])
-	}
-
-	if email.SMTPHost != "smtp.gmail.com" {
-		t.Errorf("Expected SMTPHost to be smtp.gmail.com, got %s", email.SMTPHost)
-	}
-
-	if email.SMTPPort != 587 {
-		t.Errorf("Expected SMTPPort to be 587, got %d", email.SMTPPort)
-	}
-}
 
 func TestEmailOutput_Name(t *testing.T) {
-	email := NewEmailOutput()
+	email := NewEmailOutputWithRecipients("")
 	if email.Name() != "email" {
 		t.Errorf("Expected Name() to return 'email', got %s", email.Name())
 	}
 }
 
 func TestEmailOutput_WithIgnored(t *testing.T) {
-	email := NewEmailOutput()
+	email := NewEmailOutputWithRecipients("")
 	result := email.WithIgnored("openai", "gemini")
 
 	if result != email {
@@ -75,7 +36,7 @@ func TestEmailOutput_WithIgnored(t *testing.T) {
 }
 
 func TestEmailOutput_Send_WithIgnoredProducer(t *testing.T) {
-	email := NewEmailOutput()
+	email := NewEmailOutputWithRecipients("")
 	email.WithIgnored("openai")
 
 	// This should return without attempting to send
@@ -88,9 +49,8 @@ func TestEmailOutput_Send_WithIgnoredProducer(t *testing.T) {
 func TestEmailOutput_Send_NoPasswordOrRecipients(t *testing.T) {
 	// Clear environment variables
 	os.Unsetenv("CONSENSUS_EMAIL_PASSWORD")
-	os.Unsetenv("CONSENSUS_EMAIL_RECIPIENTS")
 
-	email := NewEmailOutput()
+	email := NewEmailOutputWithRecipients("")
 
 	// This should return without attempting to send
 	err := email.Send("test content", "test-session", "openai")
@@ -100,7 +60,7 @@ func TestEmailOutput_Send_NoPasswordOrRecipients(t *testing.T) {
 }
 
 func TestEmailOutput_formatSubject(t *testing.T) {
-	email := NewEmailOutput()
+	email := NewEmailOutputWithRecipients("")
 	sessionID := "test-session-123"
 
 	tests := []struct {
@@ -124,7 +84,7 @@ func TestEmailOutput_formatSubject(t *testing.T) {
 }
 
 func TestEmailOutput_getContentType(t *testing.T) {
-	email := NewEmailOutput()
+	email := NewEmailOutputWithRecipients("")
 
 	tests := []struct {
 		producer string
@@ -147,7 +107,7 @@ func TestEmailOutput_getContentType(t *testing.T) {
 }
 
 func TestEmailOutput_getProviderBadge(t *testing.T) {
-	email := NewEmailOutput()
+	email := NewEmailOutputWithRecipients("")
 
 	tests := []struct {
 		producer string
@@ -176,7 +136,7 @@ func TestEmailOutput_getProviderBadge(t *testing.T) {
 }
 
 func TestEmailOutput_formatBody(t *testing.T) {
-	email := NewEmailOutput()
+	email := NewEmailOutputWithRecipients("")
 	content := "Test email content"
 	sessionID := "test-session-123"
 	producer := "openai"
@@ -202,5 +162,70 @@ func TestEmailOutput_formatBody(t *testing.T) {
 
 	if !strings.Contains(body, "openai") {
 		t.Error("Body should contain provider badge")
+	}
+}
+
+func TestNewEmailOutputWithRecipients(t *testing.T) {
+	// Test with recipients provided
+	recipients := "user1@example.com,user2@example.com, user3@example.com "
+	
+	// Set password env var for this test
+	os.Setenv("CONSENSUS_EMAIL_PASSWORD", "test-password")
+	defer os.Unsetenv("CONSENSUS_EMAIL_PASSWORD")
+
+	email := NewEmailOutputWithRecipients(recipients)
+
+	if email.FromEmail != "consensus.ai.25@gmail.com" {
+		t.Errorf("Expected FromEmail to be consensus.ai.25@gmail.com, got %s", email.FromEmail)
+	}
+
+	if email.FromPassword != "test-password" {
+		t.Errorf("Expected FromPassword to be test-password, got %s", email.FromPassword)
+	}
+
+	if len(email.ToEmails) != 3 {
+		t.Errorf("Expected 3 recipient emails, got %d", len(email.ToEmails))
+	}
+
+	expectedEmails := []string{"user1@example.com", "user2@example.com", "user3@example.com"}
+	for i, expected := range expectedEmails {
+		if email.ToEmails[i] != expected {
+			t.Errorf("Expected email %d to be %s, got %s", i, expected, email.ToEmails[i])
+		}
+	}
+
+	if email.SMTPHost != "smtp.gmail.com" {
+		t.Errorf("Expected SMTPHost to be smtp.gmail.com, got %s", email.SMTPHost)
+	}
+
+	if email.SMTPPort != 587 {
+		t.Errorf("Expected SMTPPort to be 587, got %d", email.SMTPPort)
+	}
+}
+
+func TestNewEmailOutputWithRecipients_EmptyString(t *testing.T) {
+	// Test with empty recipients string
+	email := NewEmailOutputWithRecipients("")
+
+	if len(email.ToEmails) != 0 {
+		t.Errorf("Expected 0 recipient emails for empty string, got %d", len(email.ToEmails))
+	}
+}
+
+func TestNewEmailOutputWithRecipients_WithEmptyEntries(t *testing.T) {
+	// Test with recipients that have empty entries
+	recipients := "user1@example.com,,user2@example.com,  ,user3@example.com"
+	
+	email := NewEmailOutputWithRecipients(recipients)
+
+	if len(email.ToEmails) != 3 {
+		t.Errorf("Expected 3 recipient emails after filtering, got %d", len(email.ToEmails))
+	}
+
+	expectedEmails := []string{"user1@example.com", "user2@example.com", "user3@example.com"}
+	for i, expected := range expectedEmails {
+		if email.ToEmails[i] != expected {
+			t.Errorf("Expected email %d to be %s, got %s", i, expected, email.ToEmails[i])
+		}
 	}
 }

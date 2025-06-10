@@ -12,7 +12,6 @@ A CLI tool that sends prompts to multiple AI providers (OpenAI, Anthropic, Gemin
 
 ### Optional Email Notifications
 - `CONSENSUS_EMAIL_PASSWORD` - App password for consensus.ai.25@gmail.com
-- `CONSENSUS_EMAIL_RECIPIENTS` - Comma-separated list of recipient emails (e.g., "user1@example.com,user2@example.com")
 
 ## Usage
 
@@ -29,6 +28,12 @@ go run main.go -prompt "Compare the pros and cons of React vs Vue"
 
 # Using shorthand
 go run main.go -p "What are the latest trends in AI?"
+
+# With email notifications
+go run main.go -prompt "Your prompt here" --email-to "user1@example.com,user2@example.com"
+
+# Email shorthand
+go run main.go -p "Your prompt here" -e "user1@example.com,user2@example.com"
 ```
 
 ## How it works

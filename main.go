@@ -40,6 +40,8 @@ func readPrompt() string {
 func main() {
 	promptFlag := flag.String("prompt", "", "Prompt text to use instead of interactive input")
 	flag.StringVar(promptFlag, "p", "", "Prompt text to use instead of interactive input (shorthand)")
+	emailToFlag := flag.String("email-to", "", "Comma-separated list of email addresses to send notifications to")
+	flag.StringVar(emailToFlag, "e", "", "Comma-separated list of email addresses to send notifications to (shorthand)")
 	flag.Parse()
 
 	var (
@@ -62,7 +64,7 @@ func main() {
 	// Initialize output manager with file and email output
 	outputManager := output.NewManager(
 		output.NewFileOutput("responses"),
-		output.NewEmailOutput(),
+		output.NewEmailOutputWithRecipients(*emailToFlag),
 	)
 
 	outputManager.Send(request, id, "request")
