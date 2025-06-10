@@ -135,11 +135,11 @@ func TestEmailOutput_getProviderBadge(t *testing.T) {
 	for _, test := range tests {
 		result := email.getProviderBadge(test.producer)
 		if test.contains == "" {
-			if result != "" {
-				t.Errorf("For producer %s, expected empty badge, got %s", test.producer, result)
+			if string(result) != "" {
+				t.Errorf("For producer %s, expected empty badge, got %s", test.producer, string(result))
 			}
 		} else {
-			if !strings.Contains(result, test.contains) {
+			if !strings.Contains(string(result), test.contains) {
 				t.Errorf("For producer %s, expected badge to contain %s, got %s", test.producer, test.contains, result)
 			}
 		}
@@ -152,7 +152,10 @@ func TestEmailOutput_formatBody(t *testing.T) {
 	sessionID := "test-session-123"
 	producer := "openai"
 
-	body := email.formatBody(content, sessionID, producer)
+	body, err := email.formatBody(content, sessionID, producer)
+	if err != nil {
+		t.Fatalf("formatBody failed: %v", err)
+	}
 
 	// Check that the HTML contains expected elements
 	if !strings.Contains(body, "<!DOCTYPE html>") {
@@ -238,5 +241,57 @@ func TestNewEmailOutputWithRecipients_WithEmptyEntries(t *testing.T) {
 		if email.ToEmails[i] != expected {
 			t.Errorf("Expected email %d to be %s, got %s", i, expected, email.ToEmails[i])
 		}
+	}
+}
+
+// TestDefaultBranches tests the default cases for unknown producers
+func TestDefaultBranches(t *testing.T) {
+	email := NewEmailOutputWithRecipients(getTestEmailConfig(), "")
+	sessionID := "test-session-123"
+	unknownProducer := "custom ai provider"
+
+	// Test formatSubject default case
+	subject := email.formatSubject(sessionID, unknownProducer)
+	expected := "[Consensus AI] Session test-session-123 - Custom Ai Provider"
+	if subject != expected {
+		t.Errorf("Expected subject %s, got %s", expected, subject)
+	}
+
+	// Test getContentType default case
+	contentType := email.getContentType(unknownProducer)
+	expected = "Custom Ai Provider Response"
+	if contentType != expected {
+		t.Errorf("Expected content type %s, got %s", expected, contentType)
+	}
+
+	// Test getProviderBadge default case
+	badge := email.getProviderBadge(unknownProducer)
+	if string(badge) != "" {
+		t.Errorf("Expected empty badge for unknown producer, got %s", string(badge))
+	}
+
+	// Test formatBody with unknown producer
+	content := "Test content for unknown producer"
+	body, err := email.formatBody(content, sessionID, unknownProducer)
+	if err != nil {
+		t.Fatalf("formatBody failed for unknown producer: %v", err)
+	}
+
+	// Verify that the body contains expected elements for unknown producer
+	if !strings.Contains(body, sessionID) {
+		t.Error("Body should contain session ID")
+	}
+
+	if !strings.Contains(body, content) {
+		t.Error("Body should contain the content")
+	}
+
+	if !strings.Contains(body, "Custom Ai Provider Response") {
+		t.Error("Body should contain content type for unknown producer")
+	}
+
+	// Should not contain any provider badge for unknown producer
+	if strings.Contains(body, "<div class=\"provider-badge") {
+		t.Error("Body should not contain provider badge for unknown producer")
 	}
 }
