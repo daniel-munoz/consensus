@@ -8,6 +8,54 @@ import (
 	"unicode"
 )
 
+const emailHTMLTemplate = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
+        .header { background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .session-id { color: #666; font-size: 0.9em; }
+        .content-type { color: #333; font-weight: bold; margin: 10px 0; }
+        .content { background-color: #fff; padding: 15px; border: 1px solid #ddd; border-radius: 5px; white-space: pre-wrap; }
+        .provider-badge { display: inline-block; padding: 4px 8px; border-radius: 3px; font-size: 0.8em; font-weight: bold; margin-bottom: 10px; }
+        .openai { background-color: #10a37f; color: white; }
+        .anthropic { background-color: #d4a574; color: white; }
+        .gemini { background-color: #4285f4; color: white; }
+        .system { background-color: #6c757d; color: white; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="session-id">Session ID: %s</div>
+        <div class="content-type">%s</div>
+        %s
+    </div>
+    <div class="content">%s</div>
+</body>
+</html>`
+
+const (
+	emailSubjectRequest   = "%s Session %s - User Request"
+	emailSubjectPrompt    = "%s Session %s - Optimized Prompt"
+	emailSubjectOpenAI    = "%s Session %s - OpenAI Response"
+	emailSubjectAnthropic = "%s Session %s - Anthropic Response"
+	emailSubjectGemini    = "%s Session %s - Gemini Response"
+	emailSubjectDefault   = "%s Session %s - %s"
+	
+	emailBadgeOpenAI    = `<div class="provider-badge openai">OpenAI</div>`
+	emailBadgeAnthropic = `<div class="provider-badge anthropic">Anthropic</div>`
+	emailBadgeGemini    = `<div class="provider-badge gemini">Gemini</div>`
+	emailBadgeSystem    = `<div class="provider-badge system">System</div>`
+	
+	emailContentTypeRequest   = "User Request"
+	emailContentTypePrompt    = "Optimized Prompt"
+	emailContentTypeOpenAI    = "OpenAI Response"
+	emailContentTypeAnthropic = "Anthropic Response"
+	emailContentTypeGemini    = "Gemini Response"
+	emailContentTypeDefault   = "%s Response"
+)
+
 
 type EmailConfig struct {
 	SMTPHost         string
@@ -107,80 +155,53 @@ func toTitleCase(input string) string {
 func (e *EmailOutput) formatSubject(sessionID, producer string) string {
 	switch producer {
 	case "request":
-		return fmt.Sprintf("%s Session %s - User Request", e.Config.SubjectPrefix, sessionID)
+		return fmt.Sprintf(emailSubjectRequest, e.Config.SubjectPrefix, sessionID)
 	case "prompt":
-		return fmt.Sprintf("%s Session %s - Optimized Prompt", e.Config.SubjectPrefix, sessionID)
+		return fmt.Sprintf(emailSubjectPrompt, e.Config.SubjectPrefix, sessionID)
 	case "openai":
-		return fmt.Sprintf("%s Session %s - OpenAI Response", e.Config.SubjectPrefix, sessionID)
+		return fmt.Sprintf(emailSubjectOpenAI, e.Config.SubjectPrefix, sessionID)
 	case "anthropic":
-		return fmt.Sprintf("%s Session %s - Anthropic Response", e.Config.SubjectPrefix, sessionID)
+		return fmt.Sprintf(emailSubjectAnthropic, e.Config.SubjectPrefix, sessionID)
 	case "gemini":
-		return fmt.Sprintf("%s Session %s - Gemini Response", e.Config.SubjectPrefix, sessionID)
+		return fmt.Sprintf(emailSubjectGemini, e.Config.SubjectPrefix, sessionID)
 	default:
-		return fmt.Sprintf("%s Session %s - %s", e.Config.SubjectPrefix, sessionID, toTitleCase(producer))
+		return fmt.Sprintf(emailSubjectDefault, e.Config.SubjectPrefix, sessionID, toTitleCase(producer))
 	}
 }
 
 func (e *EmailOutput) formatBody(content, sessionID, producer string) string {
 	contentType := e.getContentType(producer)
-
-	html := fmt.Sprintf(`<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
-        .header { background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-        .session-id { color: #666; font-size: 0.9em; }
-        .content-type { color: #333; font-weight: bold; margin: 10px 0; }
-        .content { background-color: #fff; padding: 15px; border: 1px solid #ddd; border-radius: 5px; white-space: pre-wrap; }
-        .provider-badge { display: inline-block; padding: 4px 8px; border-radius: 3px; font-size: 0.8em; font-weight: bold; margin-bottom: 10px; }
-        .openai { background-color: #10a37f; color: white; }
-        .anthropic { background-color: #d4a574; color: white; }
-        .gemini { background-color: #4285f4; color: white; }
-        .system { background-color: #6c757d; color: white; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="session-id">Session ID: %s</div>
-        <div class="content-type">%s</div>
-        %s
-    </div>
-    <div class="content">%s</div>
-</body>
-</html>`, sessionID, contentType, e.getProviderBadge(producer), content)
-
+	html := fmt.Sprintf(emailHTMLTemplate, sessionID, contentType, e.getProviderBadge(producer), content)
 	return html
 }
 
 func (e *EmailOutput) getContentType(producer string) string {
 	switch producer {
 	case "request":
-		return "User Request"
+		return emailContentTypeRequest
 	case "prompt":
-		return "Optimized Prompt"
+		return emailContentTypePrompt
 	case "openai":
-		return "OpenAI Response"
+		return emailContentTypeOpenAI
 	case "anthropic":
-		return "Anthropic Response"
+		return emailContentTypeAnthropic
 	case "gemini":
-		return "Gemini Response"
+		return emailContentTypeGemini
 	default:
-		return toTitleCase(producer) + " Response"
+		return fmt.Sprintf(emailContentTypeDefault, toTitleCase(producer))
 	}
 }
 
 func (e *EmailOutput) getProviderBadge(producer string) string {
 	switch producer {
 	case "openai":
-		return `<div class="provider-badge openai">OpenAI</div>`
+		return emailBadgeOpenAI
 	case "anthropic":
-		return `<div class="provider-badge anthropic">Anthropic</div>`
+		return emailBadgeAnthropic
 	case "gemini":
-		return `<div class="provider-badge gemini">Gemini</div>`
+		return emailBadgeGemini
 	case "request", "prompt":
-		return `<div class="provider-badge system">System</div>`
+		return emailBadgeSystem
 	default:
 		return ""
 	}
