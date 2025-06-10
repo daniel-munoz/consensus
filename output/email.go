@@ -8,17 +8,25 @@ import (
 	"unicode"
 )
 
-type EmailOutput struct {
+
+type EmailConfig struct {
 	SMTPHost         string
 	SMTPPort         int
 	FromEmail        string
+	FromName         string
+	PasswordEnvVar   string
+	SubjectPrefix    string
+}
+
+type EmailOutput struct {
+	Config           EmailConfig
 	FromPassword     string
 	ToEmails         []string
 	IgnoredProducers map[string]struct{}
 }
 
-func NewEmailOutputWithRecipients(recipients string) *EmailOutput {
-	password := os.Getenv("CONSENSUS_EMAIL_PASSWORD")
+func NewEmailOutputWithRecipients(config EmailConfig, recipients string) *EmailOutput {
+	password := os.Getenv(config.PasswordEnvVar)
 
 	var toEmails []string
 	if recipients != "" {
@@ -38,9 +46,7 @@ func NewEmailOutputWithRecipients(recipients string) *EmailOutput {
 	}
 
 	return &EmailOutput{
-		SMTPHost:         "smtp.gmail.com",
-		SMTPPort:         587,
-		FromEmail:        "consensus.ai.25@gmail.com",
+		Config:           config,
 		FromPassword:     password,
 		ToEmails:         toEmails,
 		IgnoredProducers: make(map[string]struct{}),
@@ -74,16 +80,16 @@ func (e *EmailOutput) Send(content, sessionID, producer string) error {
 	subject := e.formatSubject(sessionID, producer)
 	body := e.formatBody(content, sessionID, producer)
 
-	// Gmail SMTP configuration
-	auth := smtp.PlainAuth("", e.FromEmail, e.FromPassword, e.SMTPHost)
+	// SMTP configuration
+	auth := smtp.PlainAuth("", e.Config.FromEmail, e.FromPassword, e.Config.SMTPHost)
 
 	// Email headers and body
 	message := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
-		e.FromEmail, strings.Join(e.ToEmails, ","), subject, body)
+		e.Config.FromEmail, strings.Join(e.ToEmails, ","), subject, body)
 
 	// Send email
-	addr := fmt.Sprintf("%s:%d", e.SMTPHost, e.SMTPPort)
-	return smtp.SendMail(addr, auth, e.FromEmail, e.ToEmails, []byte(message))
+	addr := fmt.Sprintf("%s:%d", e.Config.SMTPHost, e.Config.SMTPPort)
+	return smtp.SendMail(addr, auth, e.Config.FromEmail, e.ToEmails, []byte(message))
 }
 
 func toTitleCase(input string) string {
@@ -101,17 +107,17 @@ func toTitleCase(input string) string {
 func (e *EmailOutput) formatSubject(sessionID, producer string) string {
 	switch producer {
 	case "request":
-		return fmt.Sprintf("[Consensus AI] Session %s - User Request", sessionID)
+		return fmt.Sprintf("%s Session %s - User Request", e.Config.SubjectPrefix, sessionID)
 	case "prompt":
-		return fmt.Sprintf("[Consensus AI] Session %s - Optimized Prompt", sessionID)
+		return fmt.Sprintf("%s Session %s - Optimized Prompt", e.Config.SubjectPrefix, sessionID)
 	case "openai":
-		return fmt.Sprintf("[Consensus AI] Session %s - OpenAI Response", sessionID)
+		return fmt.Sprintf("%s Session %s - OpenAI Response", e.Config.SubjectPrefix, sessionID)
 	case "anthropic":
-		return fmt.Sprintf("[Consensus AI] Session %s - Anthropic Response", sessionID)
+		return fmt.Sprintf("%s Session %s - Anthropic Response", e.Config.SubjectPrefix, sessionID)
 	case "gemini":
-		return fmt.Sprintf("[Consensus AI] Session %s - Gemini Response", sessionID)
+		return fmt.Sprintf("%s Session %s - Gemini Response", e.Config.SubjectPrefix, sessionID)
 	default:
-		return fmt.Sprintf("[Consensus AI] Session %s - %s", sessionID, toTitleCase(producer))
+		return fmt.Sprintf("%s Session %s - %s", e.Config.SubjectPrefix, sessionID, toTitleCase(producer))
 	}
 }
 
