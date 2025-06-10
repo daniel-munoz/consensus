@@ -10,8 +10,26 @@ A CLI tool that sends prompts to multiple AI providers (OpenAI, Anthropic, Gemin
   - `ANTHROPIC_API_KEY` for Anthropic API
   - `GEMINI_API_KEY` for Google Gemini API
 
+## Configuration
+
+The app uses a YAML configuration file for email settings. On first run, a default config file is created at:
+- `$XDG_CONFIG_HOME/sendmail-config/config.yml` (if XDG_CONFIG_HOME is set)
+- `~/.config/sendmail-config/config.yml` (on most systems)  
+- `config.yml` (fallback in current directory)
+
+### Default Configuration
+```yaml
+email:
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
+  from_email: consensus.ai.25@gmail.com
+  from_name: Consensus AI
+  password_env_var: CONSENSUS_EMAIL_PASSWORD
+  subject_prefix: "[Consensus AI]"
+```
+
 ### Optional Email Notifications
-- `CONSENSUS_EMAIL_PASSWORD` - App password for consensus.ai.25@gmail.com
+- Environment variable for email password (configurable via `password_env_var` in config, defaults to `CONSENSUS_EMAIL_PASSWORD`)
 
 ## Usage
 
