@@ -22,6 +22,7 @@ This is a CLI tool that sends prompts to multiple AI providers (OpenAI, Anthropi
 
 ### Key Components
 - **main.go**: Entry point with concurrent orchestration logic
+- **config.go**: Configuration loader that creates/manages YAML config file
 - **ai/**: Provider implementations that conform to the `Provider` interface
 - **output/**: Output writers for file and email delivery
   - **file.go**: File creation utility for saving responses
@@ -37,13 +38,30 @@ type Provider interface {
 }
 ```
 
-### Environment Variables Required
+
+### Configuration
+
+The app uses a YAML configuration file for email settings. On first run, a default config file is created at:
+- `$XDG_CONFIG_HOME/consensus/config.yml` (if XDG_CONFIG_HOME is set)
+- `~/.config/consensus/config.yml` (on most systems)
+- `config.yml` (fallback in current directory)
+
+Default config.yml:
+```yaml
+email:
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
+  from_email: consensus.ai.25@gmail.com
+  from_name: Consensus AI
+  password_env_var: CONSENSUS_EMAIL_PASSWORD
+  subject_prefix: "[Consensus AI]"
+```
+
+#### Environment Variables
 - `OPENAI_API_KEY`
 - `ANTHROPIC_API_KEY` 
 - `GEMINI_API_KEY`
-
-#### Email Configuration (Optional)
-- `CONSENSUS_EMAIL_PASSWORD` - App password for consensus.ai.25@gmail.com
+- Email password (configurable via `password_env_var` in config, defaults to `CONSENSUS_EMAIL_PASSWORD`)
 
 ### Command Line Usage
 - **Interactive mode**: `go run main.go` (prompts for input)

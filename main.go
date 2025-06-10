@@ -44,12 +44,17 @@ func main() {
 	flag.StringVar(emailToFlag, "e", "", "Comma-separated list of email addresses to send notifications to (shorthand)")
 	flag.Parse()
 
+	// Load configuration
+	config, err := LoadConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
+		os.Exit(1)
+	}
+
 	var (
-		prompt    string
 		request   string
 		responses = make(chan Response)
 		done      = make(chan struct{})
-		err       error
 	)
 
 	if promptFlag != nil && *promptFlag != "" {
@@ -61,10 +66,18 @@ func main() {
 	// Generate UUID for this session
 	id := uuid.NewString()
 
-	// Initialize output manager with file and email output
+	// Initialize output manager with file and email output  
+	emailConfig := output.EmailConfig{
+		SMTPHost:       config.Email.SMTPHost,
+		SMTPPort:       config.Email.SMTPPort,
+		FromEmail:      config.Email.FromEmail,
+		FromName:       config.Email.FromName,
+		PasswordEnvVar: config.Email.PasswordEnvVar,
+		SubjectPrefix:  config.Email.SubjectPrefix,
+	}
 	outputManager := output.NewManager(
 		output.NewFileOutput("responses"),
-		output.NewEmailOutputWithRecipients(*emailToFlag),
+		output.NewEmailOutputWithRecipients(emailConfig, *emailToFlag),
 	)
 
 	outputManager.Send(request, id, "request")
@@ -74,7 +87,7 @@ func main() {
 	fmt.Printf("Creating final prompt for request %s\n", id)
 
 	requestToPromptText := fmt.Sprintf("Create the best prompt to address the following request: %s", request)
-	prompt, err = ai.OpenAI{}.Send(requestToPromptText, &developerInstructions)
+	prompt, err := ai.OpenAI{}.Send(requestToPromptText, &developerInstructions)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
