@@ -13,14 +13,16 @@ type Gemini struct {
 	ConfigName     string
 	APIKeyVariable string
 	Model          string
+	BaseURL        *string
 }
 
 // NewGemini creates a new Gemini instance with the given configuration.
-func NewGemini(configName, apiKeyVariable, model string) *Gemini {
+func NewGemini(configName, apiKeyVariable, model string, baseURL *string) *Gemini {
 	return &Gemini{
 		ConfigName:     configName,
 		APIKeyVariable: apiKeyVariable,
 		Model:          model,
+		BaseURL:        baseURL,
 	}
 }
 
@@ -36,23 +38,32 @@ func (_ Gemini) Type() string {
 
 // Send sends a prompt to the Gemini API and returns the generated response.
 func (p Gemini) Send(prompt string, system *string) (string, error) {
-	var config *genai.GenerateContentConfig
+	var (
+		clientConfig  *genai.ClientConfig
+		contentConfig *genai.GenerateContentConfig
+	)
 	apiKey := os.Getenv(p.APIKeyVariable)
 	if apiKey == "" {
 		return "", fmt.Errorf("%s environment variable not set", p.APIKeyVariable)
 	}
 
 	ctx := context.Background()
-	client, err := genai.NewClient(ctx, &genai.ClientConfig{
+
+	clientConfig = &genai.ClientConfig{
 		APIKey:  apiKey,
 		Backend: genai.BackendGeminiAPI,
-	})
+	}
+	if p.BaseURL != nil {
+		clientConfig.HTTPOptions = genai.HTTPOptions{BaseURL: *p.BaseURL}
+	}
+
+	client, err := genai.NewClient(ctx, clientConfig)
 	if err != nil {
 		return "", fmt.Errorf("failed to create Gemini client: %v", err)
 	}
 
 	if system != nil {
-		config = &genai.GenerateContentConfig{
+		contentConfig = &genai.GenerateContentConfig{
 			SystemInstruction: &genai.Content{
 				Parts: []*genai.Part{{Text: *system}},
 			},
@@ -63,7 +74,7 @@ func (p Gemini) Send(prompt string, system *string) (string, error) {
 		context.Background(),
 		p.Model,
 		genai.Text(prompt),
-		config,
+		contentConfig,
 	)
 
 	return result.Text(), err

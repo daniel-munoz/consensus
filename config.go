@@ -25,11 +25,12 @@ type EmailConfig struct {
 }
 
 type ProviderConfig struct {
-	Name           string `yaml:"name"`
-	Type           string `yaml:"type"`
-	APIKeyVariable string `yaml:"api_key_variable"`
-	Model          string `yaml:"model"`
-	MaxTokens      *int64 `yaml:"max_tokens,omitempty"`
+	Name           string  `yaml:"name"`
+	Type           string  `yaml:"type"`
+	BaseURL        *string `yaml:"base_url,omitempty"` // Optional, used for custom providers
+	APIKeyVariable string  `yaml:"api_key_variable"`
+	Model          string  `yaml:"model"`
+	MaxTokens      *int64  `yaml:"max_tokens,omitempty"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -117,21 +118,21 @@ func createDefaultConfig(configPath string) (*Config, error) {
 
 func LoadProviders(config *Config) []Provider {
 	var providers []Provider
-	
+
 	for _, pc := range config.Providers {
 		switch pc.Type {
 		case "openai":
-			providers = append(providers, ai.NewOpenAI(pc.Name, pc.APIKeyVariable, pc.Model))
+			providers = append(providers, ai.NewOpenAI(pc.Name, pc.APIKeyVariable, pc.Model, pc.BaseURL))
 		case "gemini":
-			providers = append(providers, ai.NewGemini(pc.Name, pc.APIKeyVariable, pc.Model))
+			providers = append(providers, ai.NewGemini(pc.Name, pc.APIKeyVariable, pc.Model, pc.BaseURL))
 		case "anthropic":
 			maxTokens := int64(64000)
 			if pc.MaxTokens != nil {
 				maxTokens = *pc.MaxTokens
 			}
-			providers = append(providers, ai.NewAnthropic(pc.Name, pc.APIKeyVariable, pc.Model, maxTokens))
+			providers = append(providers, ai.NewAnthropic(pc.Name, pc.APIKeyVariable, pc.Model, maxTokens, pc.BaseURL))
 		}
 	}
-	
+
 	return providers
 }
