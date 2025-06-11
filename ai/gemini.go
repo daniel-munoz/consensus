@@ -8,17 +8,38 @@ import (
 	"google.golang.org/genai"
 )
 
-type Gemini struct{}
+// Gemini represents a Gemini AI client configuration.
+type Gemini struct {
+	ConfigName     string
+	APIKeyVariable string
+	Model          string
+}
 
-func (_ Gemini) Name() string {
+// NewGemini creates a new Gemini instance with the given configuration.
+func NewGemini(configName, apiKeyVariable, model string) *Gemini {
+	return &Gemini{
+		ConfigName:     configName,
+		APIKeyVariable: apiKeyVariable,
+		Model:          model,
+	}
+}
+
+// Name returns the name of the Gemini configuration.
+func (p Gemini) Name() string {
+	return p.ConfigName
+}
+
+// Type returns the type of the AI client.
+func (_ Gemini) Type() string {
 	return "gemini"
 }
 
-func (_ Gemini) Send(prompt string, system *string) (string, error) {
+// Send sends a prompt to the Gemini API and returns the generated response.
+func (p Gemini) Send(prompt string, system *string) (string, error) {
 	var config *genai.GenerateContentConfig
-	apiKey := os.Getenv("GEMINI_API_KEY")
+	apiKey := os.Getenv(p.APIKeyVariable)
 	if apiKey == "" {
-		return "", fmt.Errorf("GEMINI_API_KEY environment variable not set")
+		return "", fmt.Errorf("%s environment variable not set", p.APIKeyVariable)
 	}
 
 	ctx := context.Background()
@@ -40,7 +61,7 @@ func (_ Gemini) Send(prompt string, system *string) (string, error) {
 
 	result, err := client.Models.GenerateContent(
 		context.Background(),
-		"gemini-2.0-flash",
+		p.Model,
 		genai.Text(prompt),
 		config,
 	)

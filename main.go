@@ -46,6 +46,9 @@ func main() {
 
 	// Load configuration
 	config, err := LoadConfig()
+
+	providers := LoadProviders()
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
@@ -66,7 +69,7 @@ func main() {
 	// Generate UUID for this session
 	id := uuid.NewString()
 
-	// Initialize output manager with file and email output  
+	// Initialize output manager with file and email output
 	emailConfig := output.EmailConfig{
 		SMTPHost:       config.Email.SMTPHost,
 		SMTPPort:       config.Email.SMTPPort,
@@ -87,7 +90,7 @@ func main() {
 	fmt.Printf("Creating final prompt for request %s\n", id)
 
 	requestToPromptText := fmt.Sprintf("Create the best prompt to address the following request: %s", request)
-	prompt, err := ai.OpenAI{}.Send(requestToPromptText, &developerInstructions)
+	prompt, err := ai.NewOpenAI("prompt", "OPENAI_API_KEY", "gpt-4o").Send(requestToPromptText, &developerInstructions)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -97,7 +100,7 @@ func main() {
 
 	waitGroup := sync.WaitGroup{}
 
-	for _, provider := range []Provider{ai.OpenAI{}, ai.Anthropic{}, ai.Gemini{}} {
+	for _, provider := range providers {
 		waitGroup.Add(1)
 		go func(p Provider) {
 			defer waitGroup.Done()
