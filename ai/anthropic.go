@@ -15,15 +15,17 @@ type Anthropic struct {
 	APIKeyVariable string
 	Model          string
 	MaxTokens      int64
+	BaseURL        *string
 }
 
 // NewAnthropic creates a new instance of the Anthropic AI client with the specified configuration.
-func NewAnthropic(configName, apiKeyVariable, model string, maxTokens int64) Anthropic {
+func NewAnthropic(configName, apiKeyVariable, model string, maxTokens int64, baseURL *string) Anthropic {
 	return Anthropic{
 		ConfigName:     configName,
 		APIKeyVariable: apiKeyVariable,
 		Model:          model,
 		MaxTokens:      maxTokens,
+		BaseURL:        baseURL,
 	}
 }
 
@@ -44,8 +46,16 @@ func (p Anthropic) Send(prompt string, system *string) (string, error) {
 		return "", fmt.Errorf("%s environment variable not set", p.APIKeyVariable)
 	}
 
-	client := anthropic.NewClient(
+	options := []option.RequestOption{
 		option.WithAPIKey(apiKey),
+	}
+
+	if p.BaseURL != nil {
+		options = append(options, option.WithBaseURL(*p.BaseURL))
+	}
+
+	client := anthropic.NewClient(
+		options...,
 	)
 
 	params := anthropic.MessageNewParams{

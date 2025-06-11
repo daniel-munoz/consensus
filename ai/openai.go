@@ -14,14 +14,16 @@ type OpenAI struct {
 	ConfigName     string
 	APIKeyVariable string
 	Model          string
+	BaseURL        *string
 }
 
 // NewOpenAI creates a new OpenAI instance with the specified configuration.
-func NewOpenAI(configName, apiKeyVariable, model string) OpenAI {
+func NewOpenAI(configName, apiKeyVariable, model string, baseURL *string) OpenAI {
 	return OpenAI{
 		ConfigName:     configName,
 		APIKeyVariable: apiKeyVariable,
 		Model:          model,
+		BaseURL:        baseURL,
 	}
 }
 
@@ -53,7 +55,12 @@ func (p OpenAI) Send(prompt string, system *string) (string, error) {
 		return "", err
 	}
 
-	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewReader(data))
+	complationsURL := "https://api.openai.com/v1/chat/completions"
+	if p.BaseURL != nil {
+		complationsURL = *p.BaseURL + "/v1/chat/completions"
+	}
+
+	req, err := http.NewRequest("POST", complationsURL, bytes.NewReader(data))
 	if err != nil {
 		return "", err
 	}
