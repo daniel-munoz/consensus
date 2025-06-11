@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/daniel-munoz/consensus/ai"
 	"github.com/daniel-munoz/consensus/output"
 	"github.com/google/uuid"
 )
@@ -23,6 +22,7 @@ type Response struct {
 
 type Provider interface {
 	Name() string
+	Type() string
 	Send(string, *string) (string, error)
 }
 
@@ -46,13 +46,12 @@ func main() {
 
 	// Load configuration
 	config, err := LoadConfig()
-
-	providers := LoadProviders()
-
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
 	}
+
+	providers := LoadProviders(config)
 
 	var (
 		request   string
@@ -90,7 +89,15 @@ func main() {
 	fmt.Printf("Creating final prompt for request %s\n", id)
 
 	requestToPromptText := fmt.Sprintf("Create the best prompt to address the following request: %s", request)
-	prompt, err := ai.NewOpenAI("prompt", "OPENAI_API_KEY", "gpt-4o").Send(requestToPromptText, &developerInstructions)
+
+	// Find the first provider for prompt optimization
+	if len(providers) == 0 {
+		fmt.Fprintf(os.Stderr, "No provider configured\n")
+		os.Exit(1)
+	}
+	promptProvider := providers[0]
+
+	prompt, err := promptProvider.Send(requestToPromptText, &developerInstructions)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
