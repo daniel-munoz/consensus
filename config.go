@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/daniel-munoz/consensus/ai"
 )
 
 type Config struct {
@@ -82,3 +84,10 @@ func createDefaultConfig(configPath string) (*Config, error) {
 	return config, nil
 }
 
+func LoadProviders() []Provider {
+	return []Provider{
+		ai.NewOpenAI("openai", "OPENAI_API_KEY", "gpt-4o"),
+		ai.NewGemini("gemini", "GEMINI_API_KEY", "gemini-2.0-flash"),
+		ai.NewAnthropic("anthropic", "ANTHROPIC_API_KEY", "claude-4-sonnet-20250514", 64000),
+	}
+}
