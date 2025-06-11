@@ -9,23 +9,44 @@ import (
 	"os"
 )
 
-type OpenAI struct{}
+// OpenAI represents an AI provider that interacts with the OpenAI API.
+type OpenAI struct {
+	ConfigName     string
+	APIKeyVariable string
+	Model          string
+}
 
-func (_ OpenAI) Name() string {
+// NewOpenAI creates a new OpenAI instance with the specified configuration.
+func NewOpenAI(configName, apiKeyVariable, model string) OpenAI {
+	return OpenAI{
+		ConfigName:     configName,
+		APIKeyVariable: apiKeyVariable,
+		Model:          model,
+	}
+}
+
+// Type returns the type of the AI provider.
+func (_ OpenAI) Type() string {
 	return "openai"
 }
 
-func (_ OpenAI) Send(prompt string, system *string) (string, error) {
-	apiKey := os.Getenv("OPENAI_API_KEY")
+// Name returns the name of the AI provider.
+func (p OpenAI) Name() string {
+	return p.ConfigName
+}
+
+// Send sends a prompt to the OpenAI API and returns the response.
+func (p OpenAI) Send(prompt string, system *string) (string, error) {
+	apiKey := os.Getenv(p.APIKeyVariable)
 	if apiKey == "" {
-		return "", fmt.Errorf("OPENAI_API_KEY environment variable not set")
+		return "", fmt.Errorf("%s environment variable not set", p.APIKeyVariable)
 	}
 	messages := []map[string]string{}
 	if system != nil {
 		messages = append(messages, map[string]string{"role": "developer", "content": *system})
 	}
 	messages = append(messages, map[string]string{"role": "user", "content": prompt})
-	reqBody := map[string]any{"model": "gpt-4o", "messages": messages}
+	reqBody := map[string]any{"model": p.Model, "messages": messages}
 
 	data, err := json.Marshal(reqBody)
 	if err != nil {

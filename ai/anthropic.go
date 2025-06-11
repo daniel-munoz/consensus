@@ -9,16 +9,39 @@ import (
 	"github.com/anthropics/anthropic-sdk-go/option"
 )
 
-type Anthropic struct{}
+// Anthropic represents a client for interacting with the Anthropic AI service.
+type Anthropic struct {
+	ConfigName     string
+	APIKeyVariable string
+	Model          string
+	MaxTokens      int64
+}
 
-func (_ Anthropic) Name() string {
+// NewAnthropic creates a new instance of the Anthropic AI client with the specified configuration.
+func NewAnthropic(configName, apiKeyVariable, model string, maxTokens int64) Anthropic {
+	return Anthropic{
+		ConfigName:     configName,
+		APIKeyVariable: apiKeyVariable,
+		Model:          model,
+		MaxTokens:      maxTokens,
+	}
+}
+
+// Name returns the name of the AI client configuration.
+func (p Anthropic) Name() string {
+	return p.ConfigName
+}
+
+// Type returns the type of the AI provider.
+func (_ Anthropic) Type() string {
 	return "anthropic"
 }
 
-func (_ Anthropic) Send(prompt string, system *string) (string, error) {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+// Send sends a prompt to the Anthropic AI model and returns the response.
+func (p Anthropic) Send(prompt string, system *string) (string, error) {
+	apiKey := os.Getenv(p.APIKeyVariable)
 	if apiKey == "" {
-		return "", fmt.Errorf("ANTHROPIC_API_KEY environment variable not set")
+		return "", fmt.Errorf("%s environment variable not set", p.APIKeyVariable)
 	}
 
 	client := anthropic.NewClient(
@@ -26,9 +49,8 @@ func (_ Anthropic) Send(prompt string, system *string) (string, error) {
 	)
 
 	params := anthropic.MessageNewParams{
-
-		Model:     anthropic.ModelClaude3_5Sonnet20241022,
-		MaxTokens: int64(8192),
+		Model:     anthropic.Model(p.Model),
+		MaxTokens: p.MaxTokens,
 		Messages: []anthropic.MessageParam{
 			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
 		},
@@ -38,10 +60,19 @@ func (_ Anthropic) Send(prompt string, system *string) (string, error) {
 		params.System = []anthropic.TextBlockParam{{Text: *system}}
 	}
 
-	message, err := client.Messages.New(context.Background(), params)
+	stream := client.Messages.NewStreaming(context.Background(), params)
 
-	if err != nil {
-		return "", fmt.Errorf("failed to send message to Anthropic: %w", err)
+	message := anthropic.Message{}
+	for stream.Next() {
+		event := stream.Current()
+		err := message.Accumulate(event)
+		if err != nil {
+			return "", fmt.Errorf("failed to retrieve message from Anthropic: %w", err)
+		}
+	}
+
+	if stream.Err() != nil {
+		return "", fmt.Errorf("failed to retrieve message from Anthropic: %w", stream.Err())
 	}
 
 	return message.Content[0].AsText().Text, nil
