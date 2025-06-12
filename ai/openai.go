@@ -55,12 +55,12 @@ func (p OpenAI) Send(prompt string, system *string) (string, error) {
 		return "", err
 	}
 
-	complationsURL := "https://api.openai.com/v1/chat/completions"
+	completionsURL := "https://api.openai.com/v1/chat/completions"
 	if p.BaseURL != nil {
-		complationsURL = *p.BaseURL + "/v1/chat/completions"
+		completionsURL = *p.BaseURL + "/v1/chat/completions"
 	}
 
-	req, err := http.NewRequest("POST", complationsURL, bytes.NewReader(data))
+	req, err := http.NewRequest("POST", completionsURL, bytes.NewReader(data))
 	if err != nil {
 		return "", err
 	}
