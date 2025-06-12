@@ -18,14 +18,14 @@ func (m *Manager) AddOutput(output Writer) {
 	m.outputs = append(m.outputs, output)
 }
 
-func (m *Manager) Send(content, sessionID, producer string) {
+func (m *Manager) Send(content, sessionID, producerName, producerType string) {
 	var wg sync.WaitGroup
 
 	for _, output := range m.outputs {
 		wg.Add(1)
 		go func(o Writer) {
 			defer wg.Done()
-			if err := o.Send(content, sessionID, producer); err != nil {
+			if err := o.Send(content, sessionID, producerName, producerType); err != nil {
 				fmt.Fprintf(os.Stderr, "Error sending to %s output: %v\n", o.Name(), err)
 			}
 		}(output)

@@ -135,8 +135,8 @@ func (e *EmailOutput) WithIgnored(producers ...string) Writer {
 	return e
 }
 
-func (e *EmailOutput) Send(content, sessionID, producer string) error {
-	if _, ignored := e.IgnoredProducers[producer]; ignored {
+func (e *EmailOutput) Send(content, sessionID, producerName, producerType string) error {
+	if _, ignored := e.IgnoredProducers[producerName]; ignored {
 		return nil
 	}
 
@@ -145,8 +145,8 @@ func (e *EmailOutput) Send(content, sessionID, producer string) error {
 		return nil
 	}
 
-	subject := e.formatSubject(sessionID, producer)
-	body, err := e.formatBody(content, sessionID, producer)
+	subject := e.formatSubject(sessionID, producerName)
+	body, err := e.formatBody(content, sessionID, producerType)
 	if err != nil {
 		return fmt.Errorf("failed to format email body: %w", err)
 	}
@@ -175,15 +175,15 @@ func toTitleCase(input string) string {
 	return strings.Join(words, " ")
 }
 
-func (e *EmailOutput) formatSubject(sessionID, producer string) string {
-	if template, exists := subjectTemplates[producer]; exists {
+func (e *EmailOutput) formatSubject(sessionID, producerName string) string {
+	if template, exists := subjectTemplates[producerName]; exists {
 		return fmt.Sprintf(template, e.Config.SubjectPrefix, sessionID)
 	}
 	// Default case for unknown producers
-	return fmt.Sprintf("%s Session %s - %s", e.Config.SubjectPrefix, sessionID, toTitleCase(producer))
+	return fmt.Sprintf("%s Session %s - %s Response", e.Config.SubjectPrefix, sessionID, toTitleCase(producerName))
 }
 
-func (e *EmailOutput) formatBody(content, sessionID, producer string) (string, error) {
+func (e *EmailOutput) formatBody(content, sessionID, producerType string) (string, error) {
 	tmpl, err := template.New("email").Parse(emailHTMLTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse email template: %w", err)
@@ -191,8 +191,8 @@ func (e *EmailOutput) formatBody(content, sessionID, producer string) (string, e
 
 	data := emailTemplateData{
 		SessionID:     sessionID,
-		ContentType:   e.getContentType(producer),
-		ProviderBadge: e.getProviderBadge(producer),
+		ContentType:   e.getContentType(producerType),
+		ProviderBadge: e.getProviderBadge(producerType),
 		Content:       content, // Content will be HTML-escaped by the template
 	}
 

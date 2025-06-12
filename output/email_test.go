@@ -51,7 +51,7 @@ func TestEmailOutput_Send_WithIgnoredProducer(t *testing.T) {
 	email.WithIgnored("openai")
 
 	// This should return without attempting to send
-	err := email.Send("test content", "test-session", "openai")
+	err := email.Send("test content", "test-session", "openai", "openai")
 	if err != nil {
 		t.Errorf("Expected no error for ignored producer, got %v", err)
 	}
@@ -64,7 +64,7 @@ func TestEmailOutput_Send_NoPasswordOrRecipients(t *testing.T) {
 	email := NewEmailOutputWithRecipients(getTestEmailConfig(), "")
 
 	// This should return without attempting to send
-	err := email.Send("test content", "test-session", "openai")
+	err := email.Send("test content", "test-session", "openai", "openai")
 	if err != nil {
 		t.Errorf("Expected no error when no password/recipients configured, got %v", err)
 	}
@@ -83,7 +83,7 @@ func TestEmailOutput_formatSubject(t *testing.T) {
 		{"openai", "[Consensus AI] Session test-session-123 - OpenAI Response"},
 		{"anthropic", "[Consensus AI] Session test-session-123 - Anthropic Response"},
 		{"gemini", "[Consensus AI] Session test-session-123 - Gemini Response"},
-		{"unknown", "[Consensus AI] Session test-session-123 - Unknown"},
+		{"unknown", "[Consensus AI] Session test-session-123 - Unknown Response"},
 	}
 
 	for _, test := range tests {
@@ -252,7 +252,7 @@ func TestDefaultBranches(t *testing.T) {
 
 	// Test formatSubject default case
 	subject := email.formatSubject(sessionID, unknownProducer)
-	expected := "[Consensus AI] Session test-session-123 - Custom Ai Provider"
+	expected := "[Consensus AI] Session test-session-123 - Custom Ai Provider Response"
 	if subject != expected {
 		t.Errorf("Expected subject %s, got %s", expected, subject)
 	}

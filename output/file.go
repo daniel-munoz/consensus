@@ -31,11 +31,11 @@ func (f *FileOutput) WithIgnored(producers ...string) Writer {
 	return f
 }
 
-func (f *FileOutput) Send(content, sessionID, producer string) error {
-	if _, ignored := f.IgnoredProducers[producer]; ignored {
+func (f *FileOutput) Send(content, sessionID, producerName, _ string) error {
+	if _, ignored := f.IgnoredProducers[producerName]; ignored {
 		return nil
 	}
-	filename := fmt.Sprintf("%s/id-%s-%s.txt", f.BaseDir, sessionID, producer)
+	filename := fmt.Sprintf("%s/id-%s-%s.txt", f.BaseDir, sessionID, producerName)
 	file, err := os.Create(filename)
 	if err != nil {
 		return err

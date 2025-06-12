@@ -35,7 +35,7 @@ func (m *MockWriter) WithIgnored(producers ...string) Writer {
 	return m
 }
 
-func (m *MockWriter) Send(content, sessionID, producer string) error {
+func (m *MockWriter) Send(content, sessionID, producer, producerType string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.callCount++
@@ -59,7 +59,7 @@ func TestMockWriter(t *testing.T) {
 		t.Errorf("Expected name 'test-writer', got '%s'", mock.Name())
 	}
 
-	err := mock.Send("test content", "session123", "producer456")
+	err := mock.Send("test content", "session123", "producer456", "producer456")
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -82,7 +82,7 @@ func TestMockWriter(t *testing.T) {
 
 	testError := errors.New("test error")
 	mock.SetError(testError)
-	err = mock.Send("", "", "")
+	err = mock.Send("", "", "", "")
 	if err != testError {
 		t.Errorf("Expected error %v, got %v", testError, err)
 	}
@@ -96,7 +96,7 @@ func TestWithIgnored_SingleProducer(t *testing.T) {
 		t.Error("WithIgnored should return the same writer instance")
 	}
 
-	err := mock.Send("content", "session", "ignored-producer")
+	err := mock.Send("content", "session", "ignored-producer", "ignored-producer")
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -109,7 +109,7 @@ func TestWithIgnored_SingleProducer(t *testing.T) {
 		t.Errorf("Expected empty content for ignored producer, got '%s'", mock.lastContent)
 	}
 
-	err = mock.Send("content", "session", "active-producer")
+	err = mock.Send("content", "session", "active-producer", "active-producer")
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -147,7 +147,7 @@ func TestWithIgnored_MultipleProducers(t *testing.T) {
 		initialCount := mock.callCount
 		initialContent := mock.lastContent
 
-		err := mock.Send("test content", "session", tc.producer)
+		err := mock.Send("test content", "session", tc.producer, tc.producer)
 		if err != nil {
 			t.Errorf("Expected no error for producer %s, got %v", tc.producer, err)
 		}
@@ -179,17 +179,17 @@ func TestWithIgnored_ChainedCalls(t *testing.T) {
 		t.Error("Chained WithIgnored calls should return the same writer instance")
 	}
 
-	mock.Send("content", "session", "producer1")
+	mock.Send("content", "session", "producer1", "producer1")
 	if mock.lastContent != "" {
 		t.Error("producer1 should be ignored")
 	}
 
-	mock.Send("content", "session", "producer2")
+	mock.Send("content", "session", "producer2", "producer2")
 	if mock.lastContent != "" {
 		t.Error("producer2 should be ignored")
 	}
 
-	mock.Send("content", "session", "producer3")
+	mock.Send("content", "session", "producer3", "producer3")
 	if mock.lastContent != "content" {
 		t.Errorf("producer3 should not be ignored, expected 'content', got '%s'", mock.lastContent)
 	}
