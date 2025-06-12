@@ -22,7 +22,7 @@ func TestFileOutput_Send(t *testing.T) {
 	sessionID := "session123"
 	producer := "openai"
 
-	err := fileOutput.Send(content, sessionID, producer)
+	err := fileOutput.Send(content, sessionID, producer, producer)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -45,7 +45,7 @@ func TestFileOutput_Send(t *testing.T) {
 func TestFileOutput_Send_InvalidDirectory(t *testing.T) {
 	fileOutput := NewFileOutput("/invalid/directory/that/does/not/exist")
 
-	err := fileOutput.Send("content", "session", "producer")
+	err := fileOutput.Send("content", "session", "producer", "producer")
 	if err == nil {
 		t.Error("Expected error for invalid directory, got nil")
 	}
@@ -55,7 +55,7 @@ func TestFileOutput_Send_EmptyContent(t *testing.T) {
 	tempDir := t.TempDir()
 	fileOutput := NewFileOutput(tempDir)
 
-	err := fileOutput.Send("", "session123", "producer")
+	err := fileOutput.Send("", "session123", "producer", "producer")
 	if err != nil {
 		t.Fatalf("Expected no error for empty content, got %v", err)
 	}
@@ -79,7 +79,7 @@ func TestFileOutput_Send_SpecialCharacters(t *testing.T) {
 	sessionID := "session-with-dashes"
 	producer := "test_producer"
 
-	err := fileOutput.Send(content, sessionID, producer)
+	err := fileOutput.Send(content, sessionID, producer, producer)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -103,7 +103,7 @@ func TestFileOutput_Send_LongContent(t *testing.T) {
 	sessionID := "long-session"
 	producer := "long-producer"
 
-	err := fileOutput.Send(content, sessionID, producer)
+	err := fileOutput.Send(content, sessionID, producer, producer)
 	if err != nil {
 		t.Fatalf("Expected no error for long content, got %v", err)
 	}

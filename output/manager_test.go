@@ -56,7 +56,7 @@ func TestManager_Send(t *testing.T) {
 	sessionID := "session123"
 	producer := "test-producer"
 
-	manager.Send(content, sessionID, producer)
+	manager.Send(content, sessionID, producer, producer)
 
 	writers := []*MockWriter{mock1, mock2, mock3}
 	for i, writer := range writers {
@@ -87,7 +87,7 @@ func TestManager_Send_WithErrors(t *testing.T) {
 	mock2.SetError(errors.New("test error"))
 
 	manager := NewManager(mock1, mock2, mock3)
-	manager.Send("content", "session", "producer")
+	manager.Send("content", "session", "producer", "producer")
 
 	w.Close()
 	os.Stderr = old
@@ -126,7 +126,7 @@ func TestManager_Send_Concurrent(t *testing.T) {
 	manager := NewManager(interfaceWriters...)
 
 	start := time.Now()
-	manager.Send("test content", "session", "producer")
+	manager.Send("test content", "session", "producer", "producer")
 	duration := time.Since(start)
 
 	for i, writer := range writers {
@@ -151,7 +151,7 @@ func TestManager_Send_RaceCondition(t *testing.T) {
 		wg.Add(1)
 		go func(iteration int) {
 			defer wg.Done()
-			manager.Send("content", "session", "producer")
+			manager.Send("content", "session", "producer", "producer")
 		}(i)
 	}
 
@@ -165,5 +165,5 @@ func TestManager_Send_RaceCondition(t *testing.T) {
 func TestManager_Send_EmptyManager(t *testing.T) {
 	manager := NewManager()
 
-	manager.Send("content", "session", "producer")
+	manager.Send("content", "session", "producer", "producer")
 }

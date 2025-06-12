@@ -16,8 +16,9 @@ import (
 var inputReader io.Reader = os.Stdin
 
 type Response struct {
-	Text     string
-	Provider string
+	Text         string
+	Provider     string
+	ProviderType string
 }
 
 type Provider interface {
@@ -82,7 +83,7 @@ func main() {
 		output.NewEmailOutputWithRecipients(emailConfig, *emailToFlag),
 	)
 
-	outputManager.Send(request, id, "request")
+	outputManager.Send(request, id, "request", "request")
 
 	developerInstructions := masterPrompt
 
@@ -103,7 +104,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	outputManager.Send(prompt, id, "prompt")
+	outputManager.Send(prompt, id, "prompt", "prompt")
 
 	waitGroup := sync.WaitGroup{}
 
@@ -117,14 +118,14 @@ func main() {
 				fmt.Fprintf(os.Stderr, "Error from %s: %v\n", p.Name(), err)
 				return
 			}
-			responses <- Response{Text: response, Provider: p.Name()}
+			responses <- Response{Text: response, Provider: p.Name(), ProviderType: p.Type()}
 			fmt.Printf("%s responded!\n", p.Name())
 		}(provider)
 	}
 
 	go func() {
 		for response := range responses {
-			outputManager.Send(response.Text, id, response.Provider)
+			outputManager.Send(response.Text, id, response.Provider, response.ProviderType)
 		}
 		done <- struct{}{}
 	}()
