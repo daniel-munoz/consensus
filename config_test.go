@@ -13,7 +13,7 @@ func TestLoadProvidersFromConfig(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "config.yml")
 	
 	maxTokens := int64(32000)
-	testConfig := &Config{
+	testConfig := &ConfigYaml{
 		Email: EmailConfig{
 			SMTPHost:       "smtp.example.com",
 			SMTPPort:       587,
@@ -37,6 +37,8 @@ func TestLoadProvidersFromConfig(t *testing.T) {
 				MaxTokens:      &maxTokens,
 			},
 		},
+		PromptProvider:    "test-openai",
+		ResponseProviders: []string{"test-openai", "test-anthropic"},
 	}
 	
 	// Write test config to file
@@ -50,7 +52,7 @@ func TestLoadProvidersFromConfig(t *testing.T) {
 	}
 	
 	// Load providers from config
-	providers := LoadProviders(testConfig)
+	providers := loadProviders(testConfig)
 	
 	// Verify we got the expected number of providers
 	if len(providers) != 2 {

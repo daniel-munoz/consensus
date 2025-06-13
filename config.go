@@ -11,8 +11,16 @@ import (
 )
 
 type Config struct {
-	Email     EmailConfig      `yaml:"email"`
-	Providers []ProviderConfig `yaml:"providers"`
+	Email          EmailConfig
+	Providers      []Provider
+	PromptProvider Provider
+}
+
+type ConfigYaml struct {
+	Email             EmailConfig      `yaml:"email"`
+	Providers         []ProviderConfig `yaml:"providers"`
+	PromptProvider    string           `yaml:"prompt_provider"`
+	ResponseProviders []string         `yaml:"response_providers"`
 }
 
 type EmailConfig struct {
@@ -36,8 +44,13 @@ type ProviderConfig struct {
 func LoadConfig() (*Config, error) {
 	configPath := getConfigPath()
 
+	var configYaml ConfigYaml
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return createDefaultConfig(configPath)
+		createdConfig, err := createDefaultConfig(configPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create default config: %w", err)
+		}
+		return yamlToConfig(createdConfig)
 	}
 
 	data, err := os.ReadFile(configPath)
@@ -45,12 +58,39 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
+	if err := yaml.Unmarshal(data, &configYaml); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
+	return yamlToConfig(&configYaml)
+}
 
-	return &config, nil
+func yamlToConfig(configYaml *ConfigYaml) (*Config, error) {
+	providers := loadProviders(configYaml)
+	providersByName := make(map[string]Provider)
+	for _, provider := range providers {
+		providersByName[provider.Name()] = provider
+	}
+
+	selectedProviders := make([]Provider, 0, len(configYaml.ResponseProviders))
+	for _, name := range configYaml.ResponseProviders {
+		if provider, exists := providersByName[name]; exists {
+			selectedProviders = append(selectedProviders, provider)
+		} else {
+			return nil, fmt.Errorf("provider %s not found in config", name)
+		}
+	}
+
+	if _, ok := providersByName[configYaml.PromptProvider]; !ok {
+		return nil, fmt.Errorf("prompt provider %s not found in config", configYaml.PromptProvider)
+	}
+
+	config := &Config{
+		Email:          configYaml.Email,
+		Providers:      selectedProviders,
+		PromptProvider: providersByName[configYaml.PromptProvider],
+	}
+
+	return config, nil
 }
 
 func getConfigPath() string {
@@ -65,9 +105,9 @@ func getConfigPath() string {
 	return "config.yml"
 }
 
-func createDefaultConfig(configPath string) (*Config, error) {
+func createDefaultConfig(configPath string) (*ConfigYaml, error) {
 	maxTokens := int64(64000)
-	config := &Config{
+	config := &ConfigYaml{
 		Email: EmailConfig{
 			SMTPHost:       "smtp.gmail.com",
 			SMTPPort:       587,
@@ -97,6 +137,8 @@ func createDefaultConfig(configPath string) (*Config, error) {
 				MaxTokens:      &maxTokens,
 			},
 		},
+		PromptProvider:    "openai",
+		ResponseProviders: []string{"openai", "gemini", "anthropic"},
 	}
 
 	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
@@ -116,7 +158,7 @@ func createDefaultConfig(configPath string) (*Config, error) {
 	return config, nil
 }
 
-func LoadProviders(config *Config) []Provider {
+func loadProviders(config *ConfigYaml) []Provider {
 	var providers []Provider
 
 	for _, pc := range config.Providers {
