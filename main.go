@@ -43,6 +43,8 @@ func main() {
 	flag.StringVar(promptFlag, "p", "", "Prompt text to use instead of interactive input (shorthand)")
 	emailToFlag := flag.String("email-to", "", "Comma-separated list of email addresses to send notifications to")
 	flag.StringVar(emailToFlag, "e", "", "Comma-separated list of email addresses to send notifications to (shorthand)")
+	noMasterPrompt := flag.Bool("no-master-prompt", false, "Disable master prompt for optimization")
+	flag.BoolVar(noMasterPrompt, "nmp", false, "Disable master prompt for optimization (shorthand)")
 	flag.Parse()
 
 	// Load configuration
@@ -83,22 +85,29 @@ func main() {
 
 	outputManager.Send(request, id, "request", "request")
 
-	developerInstructions := masterPrompt
+	var prompt string
 
-	fmt.Printf("Creating final prompt for request %s\n", id)
+	if !*noMasterPrompt {
+		// Use the master prompt for optimization
+		developerInstructions := masterPrompt
 
-	requestToPromptText := fmt.Sprintf("Create the best prompt to address the following request: %s", request)
+		fmt.Printf("Creating final prompt for request %s\n", id)
 
-	// Find the first provider for prompt optimization
-	promptProvider := config.PromptProvider
+		requestToPromptText := fmt.Sprintf("Create the best prompt to address the following request: %s", request)
 
-	prompt, err := promptProvider.Send(requestToPromptText, &developerInstructions)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		promptProvider := config.PromptProvider
+
+		prompt, err = promptProvider.Send(requestToPromptText, &developerInstructions)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		outputManager.Send(prompt, id, "prompt", "prompt")
+	} else {
+		// Use the request directly as the prompt
+		prompt = request
 	}
-
-	outputManager.Send(prompt, id, "prompt", "prompt")
 
 	waitGroup := sync.WaitGroup{}
 
