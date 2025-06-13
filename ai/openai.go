@@ -1,12 +1,13 @@
 package ai
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
+
+	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/option"
+	"github.com/openai/openai-go/responses"
 )
 
 // OpenAI represents an AI provider that interacts with the OpenAI API.
@@ -43,50 +44,34 @@ func (p OpenAI) Send(prompt string, system *string) (string, error) {
 	if apiKey == "" {
 		return "", fmt.Errorf("%s environment variable not set", p.APIKeyVariable)
 	}
-	messages := []map[string]string{}
+
+	var oaiClient openai.Client
+	if p.BaseURL != nil && *p.BaseURL != "" {
+		oaiClient = openai.NewClient(
+			option.WithAPIKey(apiKey),
+			option.WithBaseURL(*p.BaseURL),
+		)
+	} else {
+		oaiClient = openai.NewClient(
+			option.WithAPIKey(apiKey),
+		)
+	}
+
+	params := responses.ResponseNewParams{
+		Model: p.Model,
+		Input: responses.ResponseNewParamsInputUnion{
+			OfString: openai.String(prompt),
+		},
+	}
+
 	if system != nil {
-		messages = append(messages, map[string]string{"role": "developer", "content": *system})
-	}
-	messages = append(messages, map[string]string{"role": "user", "content": prompt})
-	reqBody := map[string]any{"model": p.Model, "messages": messages}
-
-	data, err := json.Marshal(reqBody)
-	if err != nil {
-		return "", err
+		params.Instructions = openai.String(*system)
 	}
 
-	completionsURL := "https://api.openai.com/v1/chat/completions"
-	if p.BaseURL != nil {
-		completionsURL = *p.BaseURL + "/v1/chat/completions"
+	resp, err := oaiClient.Responses.New(context.Background(), params)
+	if err != nil {
+		return "", fmt.Errorf("failed to create response: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", completionsURL, bytes.NewReader(data))
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("OpenAI API error: %s", string(body))
-	}
-	var respBody struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&respBody); err != nil {
-		return "", err
-	}
-	if len(respBody.Choices) == 0 {
-		return "", fmt.Errorf("no response from OpenAI")
-	}
-	return respBody.Choices[0].Message.Content, nil
+	return resp.OutputText(), nil
 }
