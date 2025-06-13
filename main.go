@@ -52,8 +52,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	providers := LoadProviders(config)
-
 	var (
 		request   string
 		responses = make(chan Response)
@@ -92,11 +90,7 @@ func main() {
 	requestToPromptText := fmt.Sprintf("Create the best prompt to address the following request: %s", request)
 
 	// Find the first provider for prompt optimization
-	if len(providers) == 0 {
-		fmt.Fprintf(os.Stderr, "No provider configured\n")
-		os.Exit(1)
-	}
-	promptProvider := providers[0]
+	promptProvider := config.PromptProvider
 
 	prompt, err := promptProvider.Send(requestToPromptText, &developerInstructions)
 	if err != nil {
@@ -108,7 +102,7 @@ func main() {
 
 	waitGroup := sync.WaitGroup{}
 
-	for _, provider := range providers {
+	for _, provider := range config.Providers {
 		waitGroup.Add(1)
 		go func(p Provider) {
 			defer waitGroup.Done()
