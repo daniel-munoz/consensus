@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consensus AI</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Consensus AI</h1>
+            <p>Get responses from multiple AI providers simultaneously</p>
+        </header>
+
+        <main>
+            <form id="consensus-form">
+                <div class="input-section">
+                    <label for="prompt">Your Request</label>
+                    <textarea id="prompt" placeholder="Enter your question or request here..." required></textarea>
+                </div>
+
+                <div class="config-section">
+                    <div class="master-prompt-config">
+                        <div class="toggle-group">
+                            <input type="checkbox" id="use-master-prompt" checked>
+                            <label for="use-master-prompt">Use master prompt optimization</label>
+                        </div>
+                        
+                        <div class="provider-select" id="master-provider-section">
+                            <label for="master-provider">Master prompt provider:</label>
+                            <select id="master-provider">
+                                <option value="openai" selected>OpenAI</option>
+                                <option value="anthropic">Anthropic</option>
+                                <option value="gemini">Gemini</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="response-providers">
+                        <label>Response providers:</label>
+                        <div class="provider-checkboxes">
+                            <label><input type="checkbox" value="openai" checked> OpenAI</label>
+                            <label><input type="checkbox" value="anthropic" checked> Anthropic</label>
+                            <label><input type="checkbox" value="gemini" checked> Gemini</label>
+                        </div>
+                    </div>
+
+                    <div class="email-section">
+                        <label for="email-recipients">Email notifications (optional):</label>
+                        <input type="email" id="email-recipients" placeholder="email1@example.com, email2@example.com" multiple>
+                    </div>
+                </div>
+
+                <button type="submit" id="submit-btn">
+                    <span class="btn-text">Send Request</span>
+                    <span class="btn-loading" style="display: none;">Processing...</span>
+                </button>
+            </form>
+
+            <div id="results" class="results-section" style="display: none;">
+                <h2>Results</h2>
+                <div id="results-container"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
