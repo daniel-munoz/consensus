@@ -38,6 +38,36 @@ func readPrompt() string {
 	return strings.TrimSpace(prompt)
 }
 
+func overrideConfigWithFlags(config *Config, masterPromptProvider, responseProviders string) error {
+	// Override master prompt provider if specified
+	if masterPromptProvider != "" {
+		if provider, exists := config.AllProviders[masterPromptProvider]; exists {
+			config.PromptProvider = provider
+		} else {
+			return fmt.Errorf("master prompt provider '%s' not found in available providers", masterPromptProvider)
+		}
+	}
+
+	// Override response providers if specified
+	if responseProviders != "" {
+		providerNames := strings.Split(responseProviders, ",")
+		var selectedProviders []Provider
+		
+		for _, name := range providerNames {
+			name = strings.TrimSpace(name)
+			if provider, exists := config.AllProviders[name]; exists {
+				selectedProviders = append(selectedProviders, provider)
+			} else {
+				return fmt.Errorf("response provider '%s' not found in available providers", name)
+			}
+		}
+		
+		config.Providers = selectedProviders
+	}
+
+	return nil
+}
+
 func main() {
 	promptFlag := flag.String("prompt", "", "Prompt text to use instead of interactive input")
 	flag.StringVar(promptFlag, "p", "", "Prompt text to use instead of interactive input (shorthand)")
@@ -45,12 +75,22 @@ func main() {
 	flag.StringVar(emailToFlag, "e", "", "Comma-separated list of email addresses to send notifications to (shorthand)")
 	noMasterPrompt := flag.Bool("no-master-prompt", false, "Disable master prompt for optimization")
 	flag.BoolVar(noMasterPrompt, "nmp", false, "Disable master prompt for optimization (shorthand)")
+	masterPromptProvider := flag.String("master-prompt-provider", "", "Provider to use for master prompt optimization")
+	flag.StringVar(masterPromptProvider, "mpp", "", "Provider to use for master prompt optimization (shorthand)")
+	responseProviders := flag.String("response-providers", "", "Comma-separated list of providers to use for responses")
+	flag.StringVar(responseProviders, "rp", "", "Comma-separated list of providers to use for responses (shorthand)")
 	flag.Parse()
 
 	// Load configuration
 	config, err := LoadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Override config with command line flags
+	if err := overrideConfigWithFlags(config, *masterPromptProvider, *responseProviders); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to override config: %v\n", err)
 		os.Exit(1)
 	}
 

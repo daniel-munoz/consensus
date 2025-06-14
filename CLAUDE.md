@@ -15,9 +15,9 @@ This is a CLI tool that sends prompts to multiple AI providers (OpenAI, Anthropi
 
 ### Core Flow
 1. Reads user prompt from command line flags (`-prompt` or `-p`) or interactive stdin input
-2. Uses OpenAI with a "master prompt" (defined in `const.go`) to optimize the user's prompt using the C.R.A.F.T. methodology
-3. Sends the optimized prompt concurrently to all three AI providers
-4. Saves each response to provider-named files (`openai.txt`, `anthropic.txt`, `gemini.txt`)
+2. Uses configurable provider (default: OpenAI) with a "master prompt" (defined in `const.go`) to optimize the user's prompt using the C.R.A.F.T. methodology (can be disabled with `--no-master-prompt`)
+3. Sends the optimized prompt concurrently to all configured AI providers (configurable via command line or config file)
+4. Saves each response to provider-named files with UUID-based naming in the `responses/` directory
 5. Optionally sends email notifications for each step (user request, optimized prompt, and AI responses)
 
 ### Key Components
@@ -69,6 +69,10 @@ email:
 - **Shorthand**: `go run main.go -p "Your prompt here"`
 - **With email notifications**: `go run main.go -prompt "Your prompt here" --email-to "user1@example.com,user2@example.com"`
 - **Email shorthand**: `go run main.go -p "Your prompt here" -e "user1@example.com,user2@example.com"`
+- **Disable master prompt**: `go run main.go -p "Your prompt here" --no-master-prompt` or `-nmp`
+- **Override master prompt provider**: `go run main.go -p "Your prompt here" --master-prompt-provider "anthropic"` or `-mpp "anthropic"`
+- **Override response providers**: `go run main.go -p "Your prompt here" --response-providers "openai,gemini"` or `-rp "openai,gemini"`
+- **Combined overrides**: `go run main.go -p "Your prompt here" -mpp "gemini" -rp "openai,anthropic"`
 
 ### Testing
 Tests focus on input validation and error handling for missing API keys. Use `go test` to run the test suite.

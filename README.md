@@ -52,6 +52,21 @@ go run main.go -prompt "Your prompt here" --email-to "user1@example.com,user2@ex
 
 # Email shorthand
 go run main.go -p "Your prompt here" -e "user1@example.com,user2@example.com"
+
+# Disable master prompt optimization
+go run main.go -p "Your prompt here" --no-master-prompt
+go run main.go -p "Your prompt here" -nmp
+
+# Override which provider handles master prompt optimization
+go run main.go -p "Your prompt here" --master-prompt-provider "anthropic"
+go run main.go -p "Your prompt here" -mpp "gemini"
+
+# Override which providers generate responses
+go run main.go -p "Your prompt here" --response-providers "openai,gemini"
+go run main.go -p "Your prompt here" -rp "anthropic,openai"
+
+# Combined configuration overrides
+go run main.go -p "Your prompt here" -mpp "gemini" -rp "openai,anthropic" -e "user@example.com"
 ```
 
 ## How it works
@@ -59,14 +74,12 @@ go run main.go -p "Your prompt here" -e "user1@example.com,user2@example.com"
 The `consensus` tool follows these steps:
 
 1. Accepts user input via command line flags (`-prompt` or `-p`) or interactive stdin prompt
-2. Uses OpenAI with a master prompt (C.R.A.F.T. methodology) to optimize the user's request
-3. Sends the optimized prompt concurrently to all three AI providers
+2. Uses configurable provider (default: OpenAI) with a master prompt (C.R.A.F.T. methodology) to optimize the user's request (can be disabled with `--no-master-prompt` or overridden with `--master-prompt-provider`)
+3. Sends the optimized prompt concurrently to configured AI providers (configurable via `--response-providers` or config file)
 4. Saves all outputs to the `responses/` directory with UUID-based filenames:
    - `id-{uuid}-request.txt` - Original user request
-   - `id-{uuid}-prompt.txt` - Optimized prompt created by OpenAI
-   - `id-{uuid}-OpenAI.txt` - OpenAI's response
-   - `id-{uuid}-Anthropic.txt` - Anthropic's response  
-   - `id-{uuid}-Gemini.txt` - Gemini's response
+   - `id-{uuid}-prompt.txt` - Optimized prompt created by master prompt provider
+   - `id-{uuid}-{Provider}.txt` - Each provider's response (e.g., OpenAI.txt, Anthropic.txt, Gemini.txt)
 5. Optionally sends HTML email notifications for each step when email is configured
 
 ## Architecture
