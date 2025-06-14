@@ -2,3 +2,5 @@ consensus
 .gocache
 responses/*.txt
 coverage.*
+node_modules/
+package-lock.json
