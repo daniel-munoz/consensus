@@ -1,3 +1,4 @@
 consensus
 .gocache
 responses/*.txt
+coverage.*
