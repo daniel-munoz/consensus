@@ -11,9 +11,10 @@ import (
 )
 
 type Config struct {
-	Email          EmailConfig
-	Providers      []Provider
-	PromptProvider Provider
+	Email            EmailConfig
+	Providers        []Provider
+	PromptProvider   Provider
+	AllProviders     map[string]Provider
 }
 
 type ConfigYaml struct {
@@ -88,6 +89,7 @@ func yamlToConfig(configYaml *ConfigYaml) (*Config, error) {
 		Email:          configYaml.Email,
 		Providers:      selectedProviders,
 		PromptProvider: providersByName[configYaml.PromptProvider],
+		AllProviders:   providersByName,
 	}
 
 	return config, nil
