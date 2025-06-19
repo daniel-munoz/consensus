@@ -107,12 +107,13 @@ type ResponseHubImpl struct {
 
 Where the DelayedResponse has just one method `Value() (string, error)` that blocks until either the value or error is available.
 
-This type can be implemented with a channel and a timer (or using `time.After`) for a timeout:
+This type can be implemented with a pair of channels and a timer (or using `time.After`) for a timeout:
 
 ```golang
 type DelayedResponse struct {
     timeoutInMinutes int
-    queue            chan string
+    valueQueue       chan string
+    errorQueue       chan error
 }
 ```
 
@@ -120,12 +121,21 @@ And its main method can be implemented similar to:
 
 ```golang
 func (dr DelayedResponse) Value() (string, error) {
-    var value string
+    var (
+        value string
+        err   error
+    )
     select {
     case <- time.After(dr.timeoutInMinutes * time.Minute):
         return "", errors.New("timeout waiting for response")
-    case value = <- dr.queue:
+    case err = <- dr.errorQueue:
+        return "", err
+    case value = <- dr.valueQueue:
         return value, nil
 }
 ```
+
+A better implementation can add a cached value/error pair and a flag to figure out when the response has been received to use the cached values.
+
+With this, the Consensus Core component can create a pair of channels for each provider, wrap them into `DelayedResponse` objects and return the `ResponseHub` immediately to the caller. Then proceed to call each provider and use the corresponding channels to route the responses to the caller.
 
