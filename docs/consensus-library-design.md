@@ -74,3 +74,58 @@ The architecture of the Consensus as a Library project consists of the following
 
 ```
 
+## Code
+
+### Response Hub
+ The Response Hub is expected to implement an interface like:
+
+```golang
+type ReponseHub interface {
+    MasterPromptProviderName() string
+    MasterPrompt() (prompt string, err error)
+    Providers() []string
+    ResponseFrom(provider string) (response string, err error)
+}
+```
+
+Where `Providers()` would return the list of all provider names configured in the request, from which we are expecting a response.
+
+`MasterPrompt()` and `ResponseFrom(provider string)` would return either the response given by the corresponding provider or an error. The error could come from the provider itself, or caused by a timeout.
+
+`Providers()` and `MasterPromptProviderName()` are expected to return immediately, while `MasterPrompt()` and `ResponseFrom(provider string)` will block until a response or error are available.
+
+The implementation of this object can be something like
+
+```golang
+type ResponseHubImpl struct {
+    promptProviderName string
+    providerNames      []string
+    promptResponse     DelayedResponse
+    responses          map[string]DelayedResponse
+}
+```
+
+Where the DelayedResponse has just one method `Value() (string, error)` that blocks until either the value or error is available.
+
+This type can be implemented with a channel and a timer (or using `time.After`) for a timeout:
+
+```golang
+type DelayedResponse struct {
+    timeoutInMinutes int
+    queue            chan string
+}
+```
+
+And its main method can be implemented similar to:
+
+```golang
+func (dr DelayedResponse) Value() (string, error) {
+    var value string
+    select {
+    case <- time.After(dr.timeoutInMinutes * time.Minute):
+        return "", errors.New("timeout waiting for response")
+    case value = <- dr.queue:
+        return value, nil
+}
+```
+
