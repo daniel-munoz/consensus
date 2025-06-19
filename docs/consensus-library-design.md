@@ -80,7 +80,7 @@ The architecture of the Consensus as a Library project consists of the following
  The Response Hub is expected to implement an interface like:
 
 ```golang
-type ReponseHub interface {
+type ResponseHub interface {
     MasterPromptProviderName() string
     MasterPrompt() (prompt string, err error)
     Providers() []string
