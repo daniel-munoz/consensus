@@ -18,7 +18,7 @@ The architecture of the Consensus as a Library project consists of the following
 
 ## Sequence Diagrams
 ### Sequence Diagram 1: Full Lifecycle of a Request
-  
+
 
 ```mermaid
   sequenceDiagram
@@ -37,14 +37,14 @@ The architecture of the Consensus as a Library project consists of the following
   activate LLM1
   LLM1 -->> ConsensusCore: master prompt
   deactivate LLM1
-  ConsensusCore ->> ResponseHub: set master prompt
+  ConsensusCore ->> ResponseHub: send master prompt
   participant LLMn as Provider n
   loop for each Provider
     ConsensusCore ->> LLMn: master prompt
     activate LLMn
     LLMn -->> ConsensusCore: response n
     deactivate LLMn
-    ConsensusCore ->> ResponseHub: set response n
+    ConsensusCore ->> ResponseHub: send response n
   end
 ```
 
@@ -137,5 +137,42 @@ func (dr DelayedResponse) Value() (string, error) {
 
 A better implementation can add a cached value/error pair and a flag to figure out when the response has been received to use the cached values.
 
+### Consensus Core
+
 With this, the Consensus Core component can create a pair of channels for each provider, wrap them into `DelayedResponse` objects and return the `ResponseHub` immediately to the caller. Then proceed to call each provider and use the corresponding channels to route the responses to the caller.
+
+Thus, the first diagram would be expanded to this:
+
+```mermaid
+sequenceDiagram
+actor Client
+participant ConsensusCore as Consensus<br/>Core
+Client ->> ConsensusCore: request
+activate ConsensusCore
+create participant DRP as DelayedResponse<br/>Prompt
+ConsensusCore -->> DRP: create(promptChannels)
+loop For each Provider
+  create participant DRPV as DelayedResponse<br/>Provider
+  ConsensusCore -->> DRPV: create(providerNChannels)
+end
+participant LLM1 as Provider 1
+participant LLMn as Provider n
+create participant ResponseHub
+ConsensusCore -->> ResponseHub: create(promptDelayedResponse, providerDelayedResponses)
+destroy Client
+ConsensusCore -->> Client: responseHub
+deactivate ConsensusCore
+ConsensusCore ->> LLM1: request to master prompt
+activate LLM1
+LLM1 -->> ConsensusCore: master prompt
+deactivate LLM1
+note right of ConsensusCore: send master prompt<br/>via promptChannel
+loop for each Provider
+  ConsensusCore ->> LLMn: master prompt
+  activate LLMn
+  LLMn -->> ConsensusCore: response n
+  deactivate LLMn
+  note right of ConsensusCore: send response n<br/>via provider n channel
+end
+```
 
