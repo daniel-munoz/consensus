@@ -26,7 +26,42 @@ email:
   from_name: Consensus AI
   password_env_var: CONSENSUS_EMAIL_PASSWORD
   subject_prefix: "[Consensus AI]"
+
+providers:
+  - name: openai
+    type: openai
+    api_key_variable: OPENAI_API_KEY
+    model: gpt-4o
+  - name: gemini
+    type: gemini
+    api_key_variable: GEMINI_API_KEY
+    model: gemini-2.0-flash
+  - name: anthropic
+    type: anthropic
+    api_key_variable: ANTHROPIC_API_KEY
+    model: claude-4-sonnet-20250514
+    max_tokens: 64000
+
+prompt_provider: openai
+response_providers:
+  - openai
+  - gemini
+  - anthropic
 ```
+
+### Configuration Options
+
+**Providers**: Configure which AI providers are available and their settings
+- `name`: Unique identifier for the provider
+- `type`: Provider type (`openai`, `gemini`, `anthropic`)
+- `api_key_variable`: Environment variable containing the API key
+- `model`: Model to use for this provider
+- `max_tokens`: Optional token limit (primarily for Anthropic)
+- `base_url`: Optional custom API endpoint
+
+**Provider Selection**:
+- `prompt_provider`: Which provider to use for optimizing prompts (default: `openai`)
+- `response_providers`: List of providers to generate responses (default: all three)
 
 ### Optional Email Notifications
 - Environment variable for email password (configurable via `password_env_var` in config, defaults to `CONSENSUS_EMAIL_PASSWORD`)
