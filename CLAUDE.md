@@ -61,7 +61,7 @@ func (dr DelayedResponse) Value() (string, error)
 **Hub**: Manages multiple provider responses and master prompt coordination
 ```go
 type Hub interface {
-    MasterPromptPoviderName() string
+    MasterPromptProviderName() string
     MasterPrompt() (string, error)
     Providers() []string
     ResponseFrom(string) (string, error)
