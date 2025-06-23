@@ -6,7 +6,7 @@ import (
 
 // Hub is an interface that defines methods to interact with a collection of response providers.
 type Hub interface {
-	MasterPromptPoviderName() string
+	MasterPromptProviderName() string
 	MasterPrompt() (string, error)
 	Providers() []string
 	ResponseFrom(string) (string, error)
@@ -30,8 +30,8 @@ func NewHub(promptProviderName string, providerNames []string, promptResponse De
 	}
 }
 
-// MasterPromptPoviderName returns the name of the master prompt provider.
-func (h *hubImpl) MasterPromptPoviderName() string {
+// MasterPromptProviderName returns the name of the master prompt provider.
+func (h *hubImpl) MasterPromptProviderName() string {
 	return h.promptProviderName
 }
 

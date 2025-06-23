@@ -17,8 +17,8 @@ func TestNewHub(t *testing.T) {
 		t.Error("Expected hub to be non-nil")
 	}
 
-	if hub.MasterPromptPoviderName() != promptProvider {
-		t.Errorf("Expected provider name '%s', got '%s'", promptProvider, hub.MasterPromptPoviderName())
+	if hub.MasterPromptProviderName() != promptProvider {
+		t.Errorf("Expected provider name '%s', got '%s'", promptProvider, hub.MasterPromptProviderName())
 	}
 
 	hubProviders := hub.Providers()
@@ -37,7 +37,7 @@ func TestHub_MasterPromptPoviderName(t *testing.T) {
 	promptProvider := "anthropic"
 	hub := NewHub(promptProvider, []string{}, DelayedResponse{}, make(map[string]DelayedResponse))
 
-	result := hub.MasterPromptPoviderName()
+	result := hub.MasterPromptProviderName()
 	if result != promptProvider {
 		t.Errorf("Expected '%s', got '%s'", promptProvider, result)
 	}
@@ -46,7 +46,7 @@ func TestHub_MasterPromptPoviderName(t *testing.T) {
 func TestHub_MasterPrompt_Success(t *testing.T) {
 	valueQueue := make(chan string, 1)
 	valueQueue <- "optimized prompt"
-	
+
 	promptResponse := DelayedResponse{
 		timeoutInMinutes: 1,
 		valueQueue:       valueQueue,
@@ -69,7 +69,7 @@ func TestHub_MasterPrompt_Error(t *testing.T) {
 	errorQueue := make(chan error, 1)
 	expectedErr := errors.New("prompt generation failed")
 	errorQueue <- expectedErr
-	
+
 	promptResponse := DelayedResponse{
 		timeoutInMinutes: 1,
 		valueQueue:       make(chan string, 1),
@@ -107,7 +107,7 @@ func TestHub_Providers(t *testing.T) {
 func TestHub_ResponseFrom_Success(t *testing.T) {
 	valueQueue := make(chan string, 1)
 	valueQueue <- "anthropic response"
-	
+
 	anthropicResponse := DelayedResponse{
 		timeoutInMinutes: 1,
 		valueQueue:       valueQueue,
@@ -150,7 +150,7 @@ func TestHub_ResponseFrom_ProviderError(t *testing.T) {
 	errorQueue := make(chan error, 1)
 	expectedErr := errors.New("anthropic API error")
 	errorQueue <- expectedErr
-	
+
 	anthropicResponse := DelayedResponse{
 		timeoutInMinutes: 1,
 		valueQueue:       make(chan string, 1),
@@ -172,3 +172,4 @@ func TestHub_ResponseFrom_ProviderError(t *testing.T) {
 		t.Errorf("Expected empty string, got '%s'", result)
 	}
 }
+

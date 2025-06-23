@@ -16,7 +16,7 @@ type DelayedResponse struct {
 }
 
 // Value returns the value of the response, waiting for either a value or an error.
-func (dr DelayedResponse) Value() (string, error) {
+func (dr *DelayedResponse) Value() (string, error) {
 	if dr.responded {
 		return dr.value, dr.err
 	}
