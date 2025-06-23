@@ -24,6 +24,9 @@ This is a CLI tool that sends prompts to multiple AI providers (OpenAI, Anthropi
 - **main.go**: Entry point with concurrent orchestration logic
 - **config.go**: Configuration loader that creates/manages YAML config file
 - **ai/**: Provider implementations that conform to the `Provider` interface
+- **core/response/**: Response management types for concurrent operations
+  - **delayed.go**: DelayedResponse type for handling asynchronous responses with timeout
+  - **hub.go**: Hub interface and implementation for managing multiple provider responses
 - **output/**: Output writers for file and email delivery
   - **file.go**: File creation utility for saving responses
   - **email.go**: Email delivery for real-time notifications
@@ -35,6 +38,33 @@ All AI providers implement:
 type Provider interface {
     Name() string
     Send(string, *string) (string, error)
+}
+```
+
+### Response Management Types
+The `core/response` package provides types for managing concurrent responses:
+
+**DelayedResponse**: Handles asynchronous responses with configurable timeout
+```go
+type DelayedResponse struct {
+    timeoutInMinutes int
+    valueQueue       chan string
+    errorQueue       chan error
+    responded        bool
+    value            string
+    err              error
+}
+
+func (dr DelayedResponse) Value() (string, error)
+```
+
+**Hub**: Manages multiple provider responses and master prompt coordination
+```go
+type Hub interface {
+    MasterPromptPoviderName() string
+    MasterPrompt() (string, error)
+    Providers() []string
+    ResponseFrom(string) (string, error)
 }
 ```
 
