@@ -144,35 +144,36 @@ With this, the Consensus Core component can create a pair of channels for each p
 Thus, the first diagram would be expanded to this:
 
 ```mermaid
-sequenceDiagram
-actor Client
-participant ConsensusCore as Consensus<br/>Core
-Client ->> ConsensusCore: request
-activate ConsensusCore
-create participant DRP as DelayedResponse<br/>Prompt
-ConsensusCore -->> DRP: create(promptChannels)
-loop For each Provider
-  create participant DRPV as DelayedResponse<br/>Provider
-  ConsensusCore -->> DRPV: create(providerNChannels)
-end
-participant LLM1 as Provider 1
-participant LLMn as Provider n
-create participant ResponseHub
-ConsensusCore -->> ResponseHub: create(promptDelayedResponse, providerDelayedResponses)
-destroy Client
-ConsensusCore -->> Client: responseHub
-deactivate ConsensusCore
-ConsensusCore ->> LLM1: request to master prompt
-activate LLM1
-LLM1 -->> ConsensusCore: master prompt
-deactivate LLM1
-note right of ConsensusCore: send master prompt<br/>via promptChannel
-loop for each Provider
-  ConsensusCore ->> LLMn: master prompt
-  activate LLMn
-  LLMn -->> ConsensusCore: response n
-  deactivate LLMn
-  note right of ConsensusCore: send response n<br/>via provider n channel
-end
+  sequenceDiagram
+  actor Client
+  participant ConsensusCore as Consensus<br/>Core
+  Client ->> ConsensusCore: request
+  activate ConsensusCore
+  create participant DRP as DelayedResponse<br/>Prompt
+  ConsensusCore -->> DRP: create(promptChannels)
+  loop For each Provider
+    create participant DRPV as DelayedResponse<br/>Provider
+    ConsensusCore -->> DRPV: create(providerNChannels)
+  end
+  participant LLM1 as Provider 1
+  participant LLMn as Provider n
+  create participant ResponseHub
+  ConsensusCore -->> ResponseHub: create(promptDelayedResponse, providerDelayedResponses)
+  destroy Client
+  ConsensusCore -->> Client: responseHub
+  deactivate ConsensusCore
+  ConsensusCore ->> LLM1: request to master prompt
+  activate LLM1
+  LLM1 -->> ConsensusCore: master prompt
+  deactivate LLM1
+  note right of ConsensusCore: send master prompt<br/>via promptChannel
+  loop for each Provider
+    ConsensusCore ->> LLMn: master prompt
+    activate LLMn
+    LLMn -->> ConsensusCore: response n
+    deactivate LLMn
+    note right of ConsensusCore: send response n<br/>via provider n channel
+  end
 ```
+
 
