@@ -108,42 +108,42 @@ func getConfigPath() string {
 }
 
 func createDefaultConfig(configPath string) (*ConfigYaml, error) {
-	maxTokens := int64(64000)
+	maxTokens := DefaultAnthropicMaxTokens
 	config := &ConfigYaml{
 		Email: EmailConfig{
-			SMTPHost:       "smtp.gmail.com",
-			SMTPPort:       587,
-			FromEmail:      "consensus.ai.25@gmail.com",
-			FromName:       "Consensus AI",
-			PasswordEnvVar: "CONSENSUS_EMAIL_PASSWORD",
-			SubjectPrefix:  "[Consensus AI]",
+			SMTPHost:       DefaultSMTPHost,
+			SMTPPort:       DefaultSMTPPort,
+			FromEmail:      DefaultFromEmail,
+			FromName:       DefaultFromName,
+			PasswordEnvVar: DefaultPasswordEnvVar,
+			SubjectPrefix:  DefaultSubjectPrefix,
 		},
 		Providers: []ProviderConfig{
 			{
-				Name:           "openai",
-				Type:           "openai",
+				Name:           ProviderTypeOpenAI,
+				Type:           ProviderTypeOpenAI,
 				APIKeyVariable: "OPENAI_API_KEY",
 				Model:          "gpt-4o",
 			},
 			{
-				Name:           "gemini",
-				Type:           "gemini",
+				Name:           ProviderTypeGemini,
+				Type:           ProviderTypeGemini,
 				APIKeyVariable: "GEMINI_API_KEY",
 				Model:          "gemini-2.0-flash",
 			},
 			{
-				Name:           "anthropic",
-				Type:           "anthropic",
+				Name:           ProviderTypeAnthropic,
+				Type:           ProviderTypeAnthropic,
 				APIKeyVariable: "ANTHROPIC_API_KEY",
 				Model:          "claude-4-sonnet-20250514",
 				MaxTokens:      &maxTokens,
 			},
 		},
-		PromptProvider:    "openai",
-		ResponseProviders: []string{"openai", "gemini", "anthropic"},
+		PromptProvider:    ProviderTypeOpenAI,
+		ResponseProviders: []string{ProviderTypeOpenAI, ProviderTypeGemini, ProviderTypeAnthropic},
 	}
 
-	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(configPath), ConfigDirPerms); err != nil {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}
 
@@ -152,7 +152,7 @@ func createDefaultConfig(configPath string) (*ConfigYaml, error) {
 		return nil, fmt.Errorf("failed to marshal default config: %w", err)
 	}
 
-	if err := os.WriteFile(configPath, data, 0644); err != nil {
+	if err := os.WriteFile(configPath, data, ConfigFilePerms); err != nil {
 		return nil, fmt.Errorf("failed to write default config: %w", err)
 	}
 
@@ -165,16 +165,18 @@ func loadProviders(config *ConfigYaml) []Provider {
 
 	for _, pc := range config.Providers {
 		switch pc.Type {
-		case "openai":
+		case ProviderTypeOpenAI:
 			providers = append(providers, ai.NewOpenAI(pc.Name, pc.APIKeyVariable, pc.Model, pc.BaseURL))
-		case "gemini":
+		case ProviderTypeGemini:
 			providers = append(providers, ai.NewGemini(pc.Name, pc.APIKeyVariable, pc.Model, pc.BaseURL))
-		case "anthropic":
-			maxTokens := int64(64000)
+		case ProviderTypeAnthropic:
+			maxTokens := DefaultAnthropicMaxTokens
 			if pc.MaxTokens != nil {
 				maxTokens = *pc.MaxTokens
 			}
 			providers = append(providers, ai.NewAnthropic(pc.Name, pc.APIKeyVariable, pc.Model, maxTokens, pc.BaseURL))
+		default:
+			fmt.Fprintf(os.Stderr, "Warning: unknown provider type '%s' for provider '%s', skipping\n", pc.Type, pc.Name)
 		}
 	}
 
