@@ -52,7 +52,7 @@ func overrideConfigWithFlags(config *Config, masterPromptProvider, responseProvi
 	if responseProviders != "" {
 		providerNames := strings.Split(responseProviders, ",")
 		var selectedProviders []Provider
-		
+
 		for _, name := range providerNames {
 			name = strings.TrimSpace(name)
 			if provider, exists := config.AllProviders[name]; exists {
@@ -61,7 +61,7 @@ func overrideConfigWithFlags(config *Config, masterPromptProvider, responseProvi
 				return fmt.Errorf("response provider '%s' not found in available providers", name)
 			}
 		}
-		
+
 		config.Providers = selectedProviders
 	}
 
@@ -154,7 +154,12 @@ func main() {
 	for _, provider := range config.Providers {
 		waitGroup.Add(1)
 		go func(p Provider) {
-			defer waitGroup.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "Panic from %s: %v\n", p.Name(), r)
+				}
+				waitGroup.Done()
+			}()
 			fmt.Printf("Consulting %s...\n", p.Name())
 			response, err := p.Send(prompt, nil)
 			if err != nil {

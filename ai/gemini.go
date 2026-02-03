@@ -76,6 +76,9 @@ func (p Gemini) Send(prompt string, system *string) (string, error) {
 		genai.Text(prompt),
 		contentConfig,
 	)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate content: %v", err)
+	}
 
-	return result.Text(), err
+	return result.Text(), nil
 }
