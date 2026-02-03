@@ -16,6 +16,49 @@ type OpenAI struct {
 	APIKeyVariable string
 	Model          string
 	BaseURL        *string
+	clientFactory  OpenAIClientFactory // nil = use default
+}
+
+// realOpenAIClient wraps the actual OpenAI SDK client
+type realOpenAIClient struct {
+	apiKey  string
+	baseURL *string
+}
+
+func (c *realOpenAIClient) CreateResponse(ctx context.Context, model, input string, instructions *string) (string, error) {
+	var oaiClient openai.Client
+	if c.baseURL != nil && *c.baseURL != "" {
+		oaiClient = openai.NewClient(
+			option.WithAPIKey(c.apiKey),
+			option.WithBaseURL(*c.baseURL),
+		)
+	} else {
+		oaiClient = openai.NewClient(
+			option.WithAPIKey(c.apiKey),
+		)
+	}
+
+	params := responses.ResponseNewParams{
+		Model: model,
+		Input: responses.ResponseNewParamsInputUnion{
+			OfString: openai.String(input),
+		},
+	}
+
+	if instructions != nil {
+		params.Instructions = openai.String(*instructions)
+	}
+
+	resp, err := oaiClient.Responses.New(ctx, params)
+	if err != nil {
+		return "", fmt.Errorf("failed to create response: %w", err)
+	}
+
+	return resp.OutputText(), nil
+}
+
+func defaultOpenAIClientFactory(apiKey string, baseURL *string) OpenAIClient {
+	return &realOpenAIClient{apiKey: apiKey, baseURL: baseURL}
 }
 
 // NewOpenAI creates a new OpenAI instance with the specified configuration.
@@ -25,6 +68,17 @@ func NewOpenAI(configName, apiKeyVariable, model string, baseURL *string) OpenAI
 		APIKeyVariable: apiKeyVariable,
 		Model:          model,
 		BaseURL:        baseURL,
+	}
+}
+
+// NewOpenAIWithClient creates an OpenAI instance with a custom client factory (for testing)
+func NewOpenAIWithClient(configName, apiKeyVariable, model string, baseURL *string, factory OpenAIClientFactory) OpenAI {
+	return OpenAI{
+		ConfigName:     configName,
+		APIKeyVariable: apiKeyVariable,
+		Model:          model,
+		BaseURL:        baseURL,
+		clientFactory:  factory,
 	}
 }
 
@@ -45,33 +99,11 @@ func (p OpenAI) Send(prompt string, system *string) (string, error) {
 		return "", fmt.Errorf("%s environment variable not set", p.APIKeyVariable)
 	}
 
-	var oaiClient openai.Client
-	if p.BaseURL != nil && *p.BaseURL != "" {
-		oaiClient = openai.NewClient(
-			option.WithAPIKey(apiKey),
-			option.WithBaseURL(*p.BaseURL),
-		)
-	} else {
-		oaiClient = openai.NewClient(
-			option.WithAPIKey(apiKey),
-		)
+	factory := p.clientFactory
+	if factory == nil {
+		factory = defaultOpenAIClientFactory
 	}
 
-	params := responses.ResponseNewParams{
-		Model: p.Model,
-		Input: responses.ResponseNewParamsInputUnion{
-			OfString: openai.String(prompt),
-		},
-	}
-
-	if system != nil {
-		params.Instructions = openai.String(*system)
-	}
-
-	resp, err := oaiClient.Responses.New(context.Background(), params)
-	if err != nil {
-		return "", fmt.Errorf("failed to create response: %w", err)
-	}
-
-	return resp.OutputText(), nil
+	client := factory(apiKey, p.BaseURL)
+	return client.CreateResponse(context.Background(), p.Model, prompt, system)
 }

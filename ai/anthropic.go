@@ -16,6 +16,58 @@ type Anthropic struct {
 	Model          string
 	MaxTokens      int64
 	BaseURL        *string
+	clientFactory  AnthropicClientFactory // nil = use default
+}
+
+// realAnthropicClient wraps the actual Anthropic SDK client
+type realAnthropicClient struct {
+	apiKey  string
+	baseURL *string
+}
+
+func (c *realAnthropicClient) CreateMessage(ctx context.Context, model string, maxTokens int64, prompt string, system *string) (string, error) {
+	options := []option.RequestOption{
+		option.WithAPIKey(c.apiKey),
+	}
+
+	if c.baseURL != nil {
+		options = append(options, option.WithBaseURL(*c.baseURL))
+	}
+
+	client := anthropic.NewClient(options...)
+
+	params := anthropic.MessageNewParams{
+		Model:     anthropic.Model(model),
+		MaxTokens: maxTokens,
+		Messages: []anthropic.MessageParam{
+			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
+		},
+	}
+
+	if system != nil {
+		params.System = []anthropic.TextBlockParam{{Text: *system}}
+	}
+
+	stream := client.Messages.NewStreaming(ctx, params)
+
+	message := anthropic.Message{}
+	for stream.Next() {
+		event := stream.Current()
+		err := message.Accumulate(event)
+		if err != nil {
+			return "", fmt.Errorf("failed to retrieve message from Anthropic: %w", err)
+		}
+	}
+
+	if stream.Err() != nil {
+		return "", fmt.Errorf("failed to retrieve message from Anthropic: %w", stream.Err())
+	}
+
+	return message.Content[0].AsText().Text, nil
+}
+
+func defaultAnthropicClientFactory(apiKey string, baseURL *string) AnthropicClient {
+	return &realAnthropicClient{apiKey: apiKey, baseURL: baseURL}
 }
 
 // NewAnthropic creates a new instance of the Anthropic AI client with the specified configuration.
@@ -26,6 +78,18 @@ func NewAnthropic(configName, apiKeyVariable, model string, maxTokens int64, bas
 		Model:          model,
 		MaxTokens:      maxTokens,
 		BaseURL:        baseURL,
+	}
+}
+
+// NewAnthropicWithClient creates an Anthropic instance with a custom client factory (for testing)
+func NewAnthropicWithClient(configName, apiKeyVariable, model string, maxTokens int64, baseURL *string, factory AnthropicClientFactory) Anthropic {
+	return Anthropic{
+		ConfigName:     configName,
+		APIKeyVariable: apiKeyVariable,
+		Model:          model,
+		MaxTokens:      maxTokens,
+		BaseURL:        baseURL,
+		clientFactory:  factory,
 	}
 }
 
@@ -46,44 +110,11 @@ func (p Anthropic) Send(prompt string, system *string) (string, error) {
 		return "", fmt.Errorf("%s environment variable not set", p.APIKeyVariable)
 	}
 
-	options := []option.RequestOption{
-		option.WithAPIKey(apiKey),
+	factory := p.clientFactory
+	if factory == nil {
+		factory = defaultAnthropicClientFactory
 	}
 
-	if p.BaseURL != nil {
-		options = append(options, option.WithBaseURL(*p.BaseURL))
-	}
-
-	client := anthropic.NewClient(
-		options...,
-	)
-
-	params := anthropic.MessageNewParams{
-		Model:     anthropic.Model(p.Model),
-		MaxTokens: p.MaxTokens,
-		Messages: []anthropic.MessageParam{
-			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
-		},
-	}
-
-	if system != nil {
-		params.System = []anthropic.TextBlockParam{{Text: *system}}
-	}
-
-	stream := client.Messages.NewStreaming(context.Background(), params)
-
-	message := anthropic.Message{}
-	for stream.Next() {
-		event := stream.Current()
-		err := message.Accumulate(event)
-		if err != nil {
-			return "", fmt.Errorf("failed to retrieve message from Anthropic: %w", err)
-		}
-	}
-
-	if stream.Err() != nil {
-		return "", fmt.Errorf("failed to retrieve message from Anthropic: %w", stream.Err())
-	}
-
-	return message.Content[0].AsText().Text, nil
+	client := factory(apiKey, p.BaseURL)
+	return client.CreateMessage(context.Background(), p.Model, p.MaxTokens, prompt, system)
 }

@@ -14,6 +14,53 @@ type Gemini struct {
 	APIKeyVariable string
 	Model          string
 	BaseURL        *string
+	clientFactory  GeminiClientFactory // nil = use default
+}
+
+// realGeminiClient wraps the actual Gemini SDK client
+type realGeminiClient struct {
+	apiKey  string
+	baseURL *string
+}
+
+func (c *realGeminiClient) GenerateContent(ctx context.Context, model, prompt string, system *string) (string, error) {
+	clientConfig := &genai.ClientConfig{
+		APIKey:  c.apiKey,
+		Backend: genai.BackendGeminiAPI,
+	}
+	if c.baseURL != nil {
+		clientConfig.HTTPOptions = genai.HTTPOptions{BaseURL: *c.baseURL}
+	}
+
+	client, err := genai.NewClient(ctx, clientConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to create Gemini client: %v", err)
+	}
+
+	var contentConfig *genai.GenerateContentConfig
+	if system != nil {
+		contentConfig = &genai.GenerateContentConfig{
+			SystemInstruction: &genai.Content{
+				Parts: []*genai.Part{{Text: *system}},
+			},
+		}
+	}
+
+	result, err := client.Models.GenerateContent(
+		ctx,
+		model,
+		genai.Text(prompt),
+		contentConfig,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate content: %v", err)
+	}
+
+	return result.Text(), nil
+}
+
+func defaultGeminiClientFactory(apiKey string, baseURL *string) GeminiClient {
+	return &realGeminiClient{apiKey: apiKey, baseURL: baseURL}
 }
 
 // NewGemini creates a new Gemini instance with the given configuration.
@@ -23,6 +70,17 @@ func NewGemini(configName, apiKeyVariable, model string, baseURL *string) *Gemin
 		APIKeyVariable: apiKeyVariable,
 		Model:          model,
 		BaseURL:        baseURL,
+	}
+}
+
+// NewGeminiWithClient creates a Gemini instance with a custom client factory (for testing)
+func NewGeminiWithClient(configName, apiKeyVariable, model string, baseURL *string, factory GeminiClientFactory) *Gemini {
+	return &Gemini{
+		ConfigName:     configName,
+		APIKeyVariable: apiKeyVariable,
+		Model:          model,
+		BaseURL:        baseURL,
+		clientFactory:  factory,
 	}
 }
 
@@ -38,47 +96,16 @@ func (_ Gemini) Type() string {
 
 // Send sends a prompt to the Gemini API and returns the generated response.
 func (p Gemini) Send(prompt string, system *string) (string, error) {
-	var (
-		clientConfig  *genai.ClientConfig
-		contentConfig *genai.GenerateContentConfig
-	)
 	apiKey := os.Getenv(p.APIKeyVariable)
 	if apiKey == "" {
 		return "", fmt.Errorf("%s environment variable not set", p.APIKeyVariable)
 	}
 
-	ctx := context.Background()
-
-	clientConfig = &genai.ClientConfig{
-		APIKey:  apiKey,
-		Backend: genai.BackendGeminiAPI,
-	}
-	if p.BaseURL != nil {
-		clientConfig.HTTPOptions = genai.HTTPOptions{BaseURL: *p.BaseURL}
+	factory := p.clientFactory
+	if factory == nil {
+		factory = defaultGeminiClientFactory
 	}
 
-	client, err := genai.NewClient(ctx, clientConfig)
-	if err != nil {
-		return "", fmt.Errorf("failed to create Gemini client: %v", err)
-	}
-
-	if system != nil {
-		contentConfig = &genai.GenerateContentConfig{
-			SystemInstruction: &genai.Content{
-				Parts: []*genai.Part{{Text: *system}},
-			},
-		}
-	}
-
-	result, err := client.Models.GenerateContent(
-		context.Background(),
-		p.Model,
-		genai.Text(prompt),
-		contentConfig,
-	)
-	if err != nil {
-		return "", fmt.Errorf("failed to generate content: %v", err)
-	}
-
-	return result.Text(), nil
+	client := factory(apiKey, p.BaseURL)
+	return client.GenerateContent(context.Background(), p.Model, prompt, system)
 }
