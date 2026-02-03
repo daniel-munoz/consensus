@@ -15,6 +15,7 @@ import (
 )
 
 var inputReader io.Reader = os.Stdin
+var versionNumber = "1.0.1"
 
 type Response struct {
 	Text         string
@@ -80,7 +81,13 @@ func main() {
 	flag.StringVar(masterPromptProvider, "mpp", "", "Provider to use for master prompt optimization (shorthand)")
 	responseProviders := flag.String("response-providers", "", "Comma-separated list of providers to use for responses")
 	flag.StringVar(responseProviders, "rp", "", "Comma-separated list of providers to use for responses (shorthand)")
+	versionFlag := flag.Bool("version", false, "Consensus version")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Printf("consensus version %s\n", versionNumber)
+		os.Exit(0)
+	}
 
 	// Load configuration
 	config, err := LoadConfig()
