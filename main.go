@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 
@@ -156,7 +157,7 @@ func main() {
 		go func(p Provider) {
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Fprintf(os.Stderr, "Panic from %s: %v\n", p.Name(), r)
+					fmt.Fprintf(os.Stderr, "Panic from %s: %v\n%s\n", p.Name(), r, debug.Stack())
 				}
 				waitGroup.Done()
 			}()
