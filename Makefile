@@ -13,6 +13,7 @@ build:
 # Run all tests
 test:
 	@echo "Running tests..."
+	go clean -testcache
 	go test ./...
 
 # Run tests with verbose output
