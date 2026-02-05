@@ -30,19 +30,15 @@
                         <div class="provider-select" id="master-provider-section">
                             <label for="master-provider">Master prompt provider:</label>
                             <select id="master-provider">
-                                <option value="openai" selected>OpenAI</option>
-                                <option value="anthropic">Anthropic</option>
-                                <option value="gemini">Gemini</option>
+                                <!-- Populated dynamically from API -->
                             </select>
                         </div>
                     </div>
 
                     <div class="response-providers">
                         <label>Response providers:</label>
-                        <div class="provider-checkboxes">
-                            <label><input type="checkbox" value="openai" checked> OpenAI</label>
-                            <label><input type="checkbox" value="anthropic" checked> Anthropic</label>
-                            <label><input type="checkbox" value="gemini" checked> Gemini</label>
+                        <div class="provider-checkboxes" id="response-providers-container">
+                            <!-- Populated dynamically from API -->
                         </div>
                     </div>
 
