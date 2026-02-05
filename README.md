@@ -1,5 +1,9 @@
 # consensus
 
+![Version](https://img.shields.io/badge/version-1.0.3-blue)
+![Go Version](https://img.shields.io/badge/go-1.24%2B-00ADD8)
+![License](https://img.shields.io/badge/license-BSD%203--Clause-green)
+
 A CLI tool that sends prompts to multiple AI providers (OpenAI, Anthropic, Gemini) concurrently and saves their responses for comparison. Includes optional email notifications for real-time updates.
 
 ## Requirements
