@@ -77,6 +77,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Server mode: start HTTP server with web UI
+	if flags.Serve {
+		server := NewServer(config, flags.Port)
+		if err := server.Start(); err != nil {
+			fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	// CLI mode: process prompt directly
 	if err := overrideConfigWithFlags(config, flags.MasterPromptProvider, flags.ResponseProviders); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to override config: %v\n", err)
 		os.Exit(1)
