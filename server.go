@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -15,6 +16,9 @@ import (
 	"github.com/daniel-munoz/consensus/output"
 	"github.com/google/uuid"
 )
+
+//go:embed ui
+var uiFiles embed.FS
 
 // ConsensusRequest represents the JSON request body for creating a consensus session
 type ConsensusRequest struct {
@@ -114,7 +118,6 @@ func (sm *SessionManager) cleanupExpiredSessions() {
 type Server struct {
 	config         *Config
 	sessionManager *SessionManager
-	staticDir      string
 	port           int
 	httpServer     *http.Server
 }
@@ -124,7 +127,6 @@ func NewServer(config *Config, port int) *Server {
 	return &Server{
 		config:         config,
 		sessionManager: NewSessionManager(),
-		staticDir:      "ui",
 		port:           port,
 	}
 }
@@ -139,8 +141,9 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/providers", s.handleProviders)
 	mux.HandleFunc("/api/health", s.handleHealth)
 
-	// Serve static files from web-simple UI
-	fileServer := http.FileServer(http.Dir(s.staticDir))
+	// Serve embedded UI files
+	uiFS, _ := fs.Sub(uiFiles, "ui")
+	fileServer := http.FileServer(http.FS(uiFS))
 	mux.Handle("/", fileServer)
 
 	// Wrap with CORS middleware
@@ -437,11 +440,3 @@ func (s *Server) jsonError(w http.ResponseWriter, message string, statusCode int
 	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
-// GetStaticDir returns the absolute path to the static directory
-func (s *Server) GetStaticDir() string {
-	absPath, err := filepath.Abs(s.staticDir)
-	if err != nil {
-		return s.staticDir
-	}
-	return absPath
-}
