@@ -21,6 +21,7 @@ type CLIFlags struct {
 	Version              bool
 	Serve                bool
 	Port                 int
+	MultiSession         bool
 }
 
 // ParseFlags parses command-line flags and returns a CLIFlags struct
@@ -39,8 +40,8 @@ func ParseFlags() CLIFlags {
 	flag.StringVar(responseProviders, "rp", "", "Comma-separated list of providers to use for responses (shorthand)")
 	versionFlag := flag.Bool("version", false, "Print version and exit")
 	serveFlag := flag.Bool("serve", false, "Start HTTP server mode with web UI")
-	flag.BoolVar(serveFlag, "s", false, "Start HTTP server mode with web UI (shorthand)")
 	portFlag := flag.Int("port", 8080, "HTTP server port (used with --serve)")
+	multiSessionFlag := flag.Bool("multi-session", false, "Keep server running for multiple requests (used with --serve)")
 	flag.Parse()
 
 	flags.Prompt = *promptFlag
@@ -51,6 +52,7 @@ func ParseFlags() CLIFlags {
 	flags.Version = *versionFlag
 	flags.Serve = *serveFlag
 	flags.Port = *portFlag
+	flags.MultiSession = *multiSessionFlag
 
 	return flags
 }

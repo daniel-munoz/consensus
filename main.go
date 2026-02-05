@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 )
 
 var inputReader io.Reader = os.Stdin
@@ -79,7 +81,17 @@ func main() {
 
 	// Server mode: start HTTP server with web UI
 	if flags.Serve {
-		server := NewServer(config, flags.Port)
+		server := NewServer(config, flags.Port, flags.MultiSession)
+
+		// Handle graceful shutdown on interrupt signals
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+		go func() {
+			<-sigChan
+			fmt.Println("\nReceived interrupt signal, shutting down...")
+			server.Shutdown()
+		}()
+
 		if err := server.Start(); err != nil {
 			fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
 			os.Exit(1)

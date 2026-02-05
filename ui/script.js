@@ -172,6 +172,12 @@ class ConsensusUI {
     }
 
     async sendRequest(data) {
+        // Clear any existing polling interval to prevent race conditions
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+
         this.clearResults();
 
         // Show initial pending states
@@ -290,43 +296,71 @@ class ConsensusUI {
         }
     }
 
+    // Validate status value to prevent CSS class injection
+    isValidStatus(status) {
+        return ['pending', 'complete', 'error'].includes(status);
+    }
+
     addResult(result) {
         const resultElement = document.createElement('div');
         resultElement.className = 'result-card';
         resultElement.dataset.provider = result.provider;
         resultElement.dataset.type = result.type;
 
-        resultElement.innerHTML = `
-            <div class="result-header">
-                <span class="provider-name">${this.formatProviderName(result.provider)} ${result.type === 'master-prompt' ? '(Master Prompt)' : ''}</span>
-                <span class="status-indicator status-${result.status}">${result.status.charAt(0).toUpperCase() + result.status.slice(1)}</span>
-            </div>
-            <div class="result-content">${this.escapeHtml(result.content)}</div>
-        `;
+        // Create header container
+        const headerElement = document.createElement('div');
+        headerElement.className = 'result-header';
+
+        // Provider name
+        const providerNameElement = document.createElement('span');
+        providerNameElement.className = 'provider-name';
+        const providerLabel = this.formatProviderName(result.provider) +
+            (result.type === 'master-prompt' ? ' (Master Prompt)' : '');
+        providerNameElement.textContent = providerLabel;
+
+        // Status indicator
+        const statusElement = document.createElement('span');
+        const statusText = result.status.charAt(0).toUpperCase() + result.status.slice(1);
+        statusElement.textContent = statusText;
+        statusElement.className = 'status-indicator';
+        if (this.isValidStatus(result.status)) {
+            statusElement.classList.add(`status-${result.status}`);
+        }
+
+        headerElement.appendChild(providerNameElement);
+        headerElement.appendChild(statusElement);
+
+        // Content container
+        const contentElement = document.createElement('div');
+        contentElement.className = 'result-content';
+        contentElement.textContent = result.content;
+
+        resultElement.appendChild(headerElement);
+        resultElement.appendChild(contentElement);
 
         this.resultsContainer.appendChild(resultElement);
     }
 
     updateResult(provider, type, updates) {
-        const resultElement = document.querySelector(`[data-provider="${provider}"][data-type="${type}"]`);
+        // Use safer DOM query by iterating over children instead of querySelector with unescaped values
+        const resultElement = Array.from(this.resultsContainer.children).find(
+            (el) => el.dataset.provider === provider && el.dataset.type === type
+        );
         if (!resultElement) return;
 
         if (updates.status) {
             const statusElement = resultElement.querySelector('.status-indicator');
             statusElement.textContent = updates.status.charAt(0).toUpperCase() + updates.status.slice(1);
-            statusElement.className = `status-indicator status-${updates.status}`;
+            statusElement.className = 'status-indicator';
+            if (this.isValidStatus(updates.status)) {
+                statusElement.classList.add(`status-${updates.status}`);
+            }
         }
 
         if (updates.content) {
             const contentElement = resultElement.querySelector('.result-content');
             contentElement.textContent = updates.content;
         }
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
     }
 
     clearResults() {
