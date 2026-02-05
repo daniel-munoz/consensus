@@ -1,10 +1,10 @@
 # consensus
 
-![Version](https://img.shields.io/badge/version-1.0.3-blue)
+![Version](https://img.shields.io/badge/version-1.1.0-blue)
 ![Go Version](https://img.shields.io/badge/go-1.24%2B-00ADD8)
 ![License](https://img.shields.io/badge/license-BSD%203--Clause-green)
 
-A CLI tool that sends prompts to multiple AI providers (OpenAI, Anthropic, Gemini) concurrently and saves their responses for comparison. Includes optional email notifications for real-time updates.
+A CLI tool that sends prompts to multiple AI providers (OpenAI, Anthropic, Gemini) concurrently and saves their responses for comparison. Includes optional email notifications for real-time updates and a web UI for interactive use.
 
 ## Requirements
 
@@ -108,6 +108,24 @@ go run main.go -p "Your prompt here" -rp "anthropic,openai"
 go run main.go -p "Your prompt here" -mpp "gemini" -rp "openai,anthropic" -e "user@example.com"
 ```
 
+### Server Mode (Web UI)
+```bash
+# Start the server with web UI (default port 8080)
+go run main.go --serve
+
+# Use a custom port
+go run main.go --serve --port 3000
+
+# Keep server running for multiple requests (default shuts down after first request completes)
+go run main.go --serve --multi-session
+```
+
+The server mode automatically opens your default browser to the web interface. The UI allows you to:
+- Enter prompts interactively
+- Select which providers to use for responses
+- Toggle master prompt optimization
+- View responses from all providers side by side
+
 ## How it works
 
 The `consensus` tool follows these steps:
@@ -128,6 +146,7 @@ The `consensus` tool follows these steps:
 - **UUID Sessions**: Each run generates a unique session ID for organized file storage and email tracking
 - **Concurrent Processing**: All AI providers are queried simultaneously for faster results
 - **Email Notifications**: Optional real-time email updates with HTML formatting and provider-specific styling
+- **Embedded Web UI**: Self-contained HTTP server with an embedded web interface for interactive use
 
 ## Development
 
@@ -156,6 +175,9 @@ go run main.go
 
 # Build and run with prompt
 go run main.go -prompt "Your prompt here"
+
+# Start web UI server
+go run main.go --serve
 
 # Run tests
 go test ./...
