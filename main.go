@@ -12,7 +12,7 @@ import (
 
 var inputReader io.Reader = os.Stdin
 
-const versionNumber = "1.0.3"
+const versionNumber = "1.1.0"
 
 type Response struct {
 	Text         string
