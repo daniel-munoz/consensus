@@ -60,16 +60,23 @@ type Session struct {
 type SessionManager struct {
 	sessions map[string]*Session
 	mu       sync.RWMutex
+	done     chan struct{}
 }
 
 // NewSessionManager creates a new session manager
 func NewSessionManager() *SessionManager {
 	sm := &SessionManager{
 		sessions: make(map[string]*Session),
+		done:     make(chan struct{}),
 	}
 	// Start cleanup goroutine for expired sessions
 	go sm.cleanupExpiredSessions()
 	return sm
+}
+
+// Stop stops the session manager's cleanup goroutine
+func (sm *SessionManager) Stop() {
+	close(sm.done)
 }
 
 // CreateSession creates a new session and returns its ID
@@ -103,14 +110,20 @@ func (sm *SessionManager) GetSession(id string) *Session {
 // cleanupExpiredSessions removes sessions older than 30 minutes
 func (sm *SessionManager) cleanupExpiredSessions() {
 	ticker := time.NewTicker(5 * time.Minute)
-	for range ticker.C {
-		sm.mu.Lock()
-		for id, session := range sm.sessions {
-			if time.Since(session.CreatedAt) > 30*time.Minute {
-				delete(sm.sessions, id)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-sm.done:
+			return
+		case <-ticker.C:
+			sm.mu.Lock()
+			for id, session := range sm.sessions {
+				if time.Since(session.CreatedAt) > 30*time.Minute {
+					delete(sm.sessions, id)
+				}
 			}
+			sm.mu.Unlock()
 		}
-		sm.mu.Unlock()
 	}
 }
 
@@ -120,14 +133,16 @@ type Server struct {
 	sessionManager *SessionManager
 	port           int
 	httpServer     *http.Server
+	multiSession   bool
 }
 
 // NewServer creates a new HTTP server
-func NewServer(config *Config, port int) *Server {
+func NewServer(config *Config, port int, multiSession bool) *Server {
 	return &Server{
 		config:         config,
 		sessionManager: NewSessionManager(),
 		port:           port,
+		multiSession:   multiSession,
 	}
 }
 
@@ -142,7 +157,10 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/health", s.handleHealth)
 
 	// Serve embedded UI files
-	uiFS, _ := fs.Sub(uiFiles, "ui")
+	uiFS, err := fs.Sub(uiFiles, "ui")
+	if err != nil {
+		return fmt.Errorf("failed to load embedded UI files: %w", err)
+	}
 	fileServer := http.FileServer(http.FS(uiFS))
 	mux.Handle("/", fileServer)
 
@@ -163,7 +181,7 @@ func (s *Server) Start() error {
 		openBrowser(fmt.Sprintf("http://localhost%s", addr))
 	}()
 
-	err := s.httpServer.ListenAndServe()
+	err = s.httpServer.ListenAndServe()
 	if err == http.ErrServerClosed {
 		return nil // Graceful shutdown
 	}
@@ -176,18 +194,40 @@ func (s *Server) Shutdown() {
 		fmt.Println("Shutting down server...")
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		s.httpServer.Shutdown(ctx)
+		if err := s.httpServer.Shutdown(ctx); err != nil {
+			fmt.Printf("Error during HTTP server shutdown: %v\n", err)
+		}
+	}
+	if s.sessionManager != nil {
+		s.sessionManager.Stop()
 	}
 }
 
-// corsMiddleware adds CORS headers to responses
+// isAllowedOrigin checks if the origin is a trusted localhost/loopback origin
+func isAllowedOrigin(origin string) bool {
+	if origin == "" {
+		return false
+	}
+	// Allow common loopback/localhost origins only
+	return strings.HasPrefix(origin, "http://localhost") ||
+		strings.HasPrefix(origin, "http://127.0.0.1") ||
+		strings.HasPrefix(origin, "http://[::1]")
+}
+
+// corsMiddleware adds CORS headers to responses.
+// Only allows localhost origins to reduce security risk from malicious websites.
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := r.Header.Get("Origin")
+		if isAllowedOrigin(origin) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Add("Vary", "Origin")
+		}
+
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
-		if r.Method == "OPTIONS" {
+		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
@@ -206,7 +246,7 @@ func openBrowser(url string) {
 	case "linux":
 		cmd = exec.Command("xdg-open", url)
 	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", url)
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
 	default:
 		fmt.Printf("Open your browser to: %s\n", url)
 		return
@@ -274,10 +314,15 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Extract session ID from path
+	// Extract and validate session ID from path
 	sessionID := strings.TrimPrefix(r.URL.Path, "/api/session/")
+	sessionID = strings.Trim(sessionID, "/")
 	if sessionID == "" {
 		s.jsonError(w, "Session ID is required", http.StatusBadRequest)
+		return
+	}
+	if _, err := uuid.Parse(sessionID); err != nil {
+		s.jsonError(w, "Invalid session ID format", http.StatusBadRequest)
 		return
 	}
 
@@ -388,11 +433,13 @@ func (s *Server) processSession(session *Session, req ConsensusRequest) {
 	session.Status = "complete"
 	session.mu.Unlock()
 
-	// Give the UI time to poll for the final status, then shut down
-	go func() {
-		time.Sleep(3 * time.Second)
-		s.Shutdown()
-	}()
+	// In single-session mode, give the UI time to poll for the final status, then shut down
+	if !s.multiSession {
+		go func() {
+			time.Sleep(3 * time.Second)
+			s.Shutdown()
+		}()
+	}
 }
 
 // processProvider sends a prompt to a single provider and updates the session
