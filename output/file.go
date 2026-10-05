@@ -5,6 +5,9 @@ import (
 	"os"
 )
 
+// dirPerms are the permissions used when creating the output directory
+const dirPerms = 0755
+
 type FileOutput struct {
 	BaseDir          string
 	IgnoredProducers map[string]struct{}
@@ -35,7 +38,7 @@ func (f *FileOutput) Send(content, sessionID, producerName, _ string) error {
 	if _, ignored := f.IgnoredProducers[producerName]; ignored {
 		return nil
 	}
-	if err := os.MkdirAll(f.BaseDir, 0755); err != nil {
+	if err := os.MkdirAll(f.BaseDir, dirPerms); err != nil {
 		return err
 	}
 	filename := fmt.Sprintf("%s/id-%s-%s.txt", f.BaseDir, sessionID, producerName)
