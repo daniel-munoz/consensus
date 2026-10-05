@@ -134,15 +134,17 @@ type Server struct {
 	port           int
 	httpServer     *http.Server
 	multiSession   bool
+	saveFiles      bool
 }
 
 // NewServer creates a new HTTP server
-func NewServer(config *Config, port int, multiSession bool) *Server {
+func NewServer(config *Config, port int, multiSession, saveFiles bool) *Server {
 	return &Server{
 		config:         config,
 		sessionManager: NewSessionManager(),
 		port:           port,
 		multiSession:   multiSession,
+		saveFiles:      saveFiles,
 	}
 }
 
@@ -371,9 +373,9 @@ func (s *Server) processSession(session *Session, req ConsensusRequest) {
 	session.Status = "processing"
 	session.mu.Unlock()
 
-	// Create output manager for file and email outputs
+	// Create output manager for email (and optionally file) outputs
 	emailTo := strings.Join(req.EmailRecipients, ",")
-	outputManager := NewOutputManager(s.config, emailTo)
+	outputManager := NewOutputManager(s.config, emailTo, s.saveFiles)
 
 	// Save the original request
 	outputManager.Send(req.Prompt, session.ID, "request", "request")

@@ -51,6 +51,19 @@ func TestFileOutput_Send_InvalidDirectory(t *testing.T) {
 	}
 }
 
+func TestFileOutput_Send_CreatesMissingDirectory(t *testing.T) {
+	baseDir := filepath.Join(t.TempDir(), "responses")
+	fileOutput := NewFileOutput(baseDir)
+
+	if err := fileOutput.Send("content", "session", "producer", "producer"); err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(baseDir, "id-session-producer.txt")); err != nil {
+		t.Errorf("Expected file to be created: %v", err)
+	}
+}
+
 func TestFileOutput_Send_EmptyContent(t *testing.T) {
 	tempDir := t.TempDir()
 	fileOutput := NewFileOutput(tempDir)

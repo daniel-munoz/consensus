@@ -22,6 +22,7 @@ type CLIFlags struct {
 	Serve                bool
 	Port                 int
 	MultiSession         bool
+	SaveFiles            bool
 }
 
 // ParseFlags parses command-line flags and returns a CLIFlags struct
@@ -42,6 +43,8 @@ func ParseFlags() CLIFlags {
 	serveFlag := flag.Bool("serve", false, "Start HTTP server mode with web UI")
 	portFlag := flag.Int("port", 8080, "HTTP server port (used with --serve)")
 	multiSessionFlag := flag.Bool("multi-session", false, "Keep server running for multiple requests (used with --serve)")
+	saveFiles := flag.Bool("save-files", false, "Save request, prompt and responses to the local responses/ directory")
+	flag.BoolVar(saveFiles, "sf", false, "Save request, prompt and responses to the local responses/ directory (shorthand)")
 	flag.Parse()
 
 	flags.Prompt = *promptFlag
@@ -53,12 +56,13 @@ func ParseFlags() CLIFlags {
 	flags.Serve = *serveFlag
 	flags.Port = *portFlag
 	flags.MultiSession = *multiSessionFlag
+	flags.SaveFiles = *saveFiles
 
 	return flags
 }
 
-// NewOutputManager creates the output manager with file and email outputs
-func NewOutputManager(config *Config, emailTo string) *output.Manager {
+// NewOutputManager creates the output manager with email output, plus file output when saveFiles is set
+func NewOutputManager(config *Config, emailTo string, saveFiles bool) *output.Manager {
 	emailConfig := output.EmailConfig{
 		SMTPHost:       config.Email.SMTPHost,
 		SMTPPort:       config.Email.SMTPPort,
@@ -67,10 +71,11 @@ func NewOutputManager(config *Config, emailTo string) *output.Manager {
 		PasswordEnvVar: config.Email.PasswordEnvVar,
 		SubjectPrefix:  config.Email.SubjectPrefix,
 	}
-	return output.NewManager(
-		output.NewFileOutput("responses"),
-		output.NewEmailOutputWithRecipients(emailConfig, emailTo),
-	)
+	manager := output.NewManager(output.NewEmailOutputWithRecipients(emailConfig, emailTo))
+	if saveFiles {
+		manager.AddOutput(output.NewFileOutput("responses"))
+	}
+	return manager
 }
 
 // OptimizePrompt applies master prompt optimization using the given provider

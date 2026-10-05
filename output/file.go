@@ -35,6 +35,9 @@ func (f *FileOutput) Send(content, sessionID, producerName, _ string) error {
 	if _, ignored := f.IgnoredProducers[producerName]; ignored {
 		return nil
 	}
+	if err := os.MkdirAll(f.BaseDir, 0755); err != nil {
+		return err
+	}
 	filename := fmt.Sprintf("%s/id-%s-%s.txt", f.BaseDir, sessionID, producerName)
 	file, err := os.Create(filename)
 	if err != nil {

@@ -12,7 +12,7 @@ import (
 
 var inputReader io.Reader = os.Stdin
 
-const versionNumber = "1.1.1"
+const versionNumber = "1.2.0"
 
 type Response struct {
 	Text         string
@@ -81,7 +81,7 @@ func main() {
 
 	// Server mode: start HTTP server with web UI
 	if flags.Serve {
-		server := NewServer(config, flags.Port, flags.MultiSession)
+		server := NewServer(config, flags.Port, flags.MultiSession, flags.SaveFiles)
 
 		// Handle graceful shutdown on interrupt signals
 		sigChan := make(chan os.Signal, 1)
@@ -100,6 +100,11 @@ func main() {
 	}
 
 	// CLI mode: process prompt directly
+	if !flags.SaveFiles && strings.TrimSpace(flags.EmailTo) == "" {
+		fmt.Fprintln(os.Stderr, "No output configured: use --email-to (-e) to email responses and/or --save-files (-sf) to save them locally")
+		os.Exit(1)
+	}
+
 	if err := overrideConfigWithFlags(config, flags.MasterPromptProvider, flags.ResponseProviders); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to override config: %v\n", err)
 		os.Exit(1)
@@ -111,7 +116,7 @@ func main() {
 	}
 
 	sessionID := NewSession()
-	outputManager := NewOutputManager(config, flags.EmailTo)
+	outputManager := NewOutputManager(config, flags.EmailTo, flags.SaveFiles)
 
 	outputManager.Send(request, sessionID, "request", "request")
 

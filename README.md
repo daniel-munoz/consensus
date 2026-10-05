@@ -1,6 +1,6 @@
 # consensus
 
-![Version](https://img.shields.io/badge/version-1.1.1-blue)
+![Version](https://img.shields.io/badge/version-1.2.0-blue)
 ![Go Version](https://img.shields.io/badge/go-1.24%2B-00ADD8)
 ![License](https://img.shields.io/badge/license-BSD%203--Clause-green)
 
@@ -80,17 +80,15 @@ The tool will prompt you to enter your request, then process it through all AI p
 
 ### Command Line Mode
 ```bash
-# Using full flag name
-go run main.go -prompt "Compare the pros and cons of React vs Vue"
-
-# Using shorthand
-go run main.go -p "What are the latest trends in AI?"
-
-# With email notifications
-go run main.go -prompt "Your prompt here" --email-to "user1@example.com,user2@example.com"
+# Email responses (full flag names)
+go run main.go -prompt "Compare the pros and cons of React vs Vue" --email-to "user1@example.com,user2@example.com"
 
 # Email shorthand
-go run main.go -p "Your prompt here" -e "user1@example.com,user2@example.com"
+go run main.go -p "What are the latest trends in AI?" -e "user1@example.com,user2@example.com"
+
+# Save responses to the local responses/ directory instead of (or in addition to) email
+go run main.go -p "Your prompt here" --save-files
+go run main.go -p "Your prompt here" -sf -e "user@example.com"
 
 # Disable master prompt optimization
 go run main.go -p "Your prompt here" --no-master-prompt
@@ -108,6 +106,8 @@ go run main.go -p "Your prompt here" -rp "anthropic,openai"
 go run main.go -p "Your prompt here" -mpp "gemini" -rp "openai,anthropic" -e "user@example.com"
 ```
 
+Local response files are **not** written by default. In command line mode at least one output is required: pass `--email-to`/`-e`, `--save-files`/`-sf`, or both. Otherwise the tool exits with an error before calling any provider.
+
 ### Server Mode (Web UI)
 ```bash
 # Start the server with web UI (default port 8080)
@@ -118,6 +118,9 @@ go run main.go --serve --port 3000
 
 # Keep server running for multiple requests (default shuts down after first request completes)
 go run main.go --serve --multi-session
+
+# Also save responses to the local responses/ directory
+go run main.go --serve --save-files
 ```
 
 The server mode automatically opens your default browser to the web interface. The UI allows you to:
@@ -133,7 +136,7 @@ The `consensus` tool follows these steps:
 1. Accepts user input via command line flags (`-prompt` or `-p`) or interactive stdin prompt
 2. Uses configurable provider (default: OpenAI) with a master prompt (C.R.A.F.T. methodology) to optimize the user's request (can be disabled with `--no-master-prompt` or overridden with `--master-prompt-provider`)
 3. Sends the optimized prompt concurrently to configured AI providers (configurable via `--response-providers` or config file)
-4. Saves all outputs to the `responses/` directory with UUID-based filenames:
+4. When `--save-files` is set, saves all outputs to the `responses/` directory (created if missing) with UUID-based filenames:
    - `id-{uuid}-request.txt` - Original user request
    - `id-{uuid}-prompt.txt` - Optimized prompt created by master prompt provider
    - `id-{uuid}-{Provider}.txt` - Each provider's response (e.g., OpenAI.txt, Anthropic.txt, Gemini.txt)
@@ -174,7 +177,7 @@ make clean
 go run main.go
 
 # Build and run with prompt
-go run main.go -prompt "Your prompt here"
+go run main.go -prompt "Your prompt here" --save-files
 
 # Start web UI server
 go run main.go --serve
