@@ -4,7 +4,7 @@ import "context"
 
 // OpenAIClient abstracts the OpenAI SDK client for testing
 type OpenAIClient interface {
-	CreateResponse(ctx context.Context, model, input string, instructions *string) (string, error)
+	CreateResponse(ctx context.Context, model, input string, instructions *string, maxOutputTokens *int64) (string, error)
 }
 
 // OpenAIClientFactory creates an OpenAIClient instance

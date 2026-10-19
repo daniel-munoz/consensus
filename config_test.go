@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"gopkg.in/yaml.v3"
+
+	"github.com/daniel-munoz/consensus/ai"
 )
 
 func TestLoadProvidersFromConfig(t *testing.T) {
@@ -71,6 +73,26 @@ func TestLoadProvidersFromConfig(t *testing.T) {
 	
 	if !providerNames["test-anthropic"] {
 		t.Error("Expected test-anthropic provider not found")
+	}
+}
+
+func TestLoadProviders_OpenAIMaxTokens(t *testing.T) {
+	maxTokens := int64(64000)
+	providers := loadProviders(&ConfigYaml{
+		Providers: []ProviderConfig{
+			{Name: "with-limit", Type: "openai", APIKeyVariable: "KEY", Model: "claude-opus-5-5", MaxTokens: &maxTokens},
+			{Name: "without-limit", Type: "openai", APIKeyVariable: "KEY", Model: "gpt-4o"},
+		},
+	})
+
+	withLimit := providers[0].(ai.OpenAI)
+	if withLimit.MaxTokens == nil || *withLimit.MaxTokens != maxTokens {
+		t.Errorf("Expected MaxTokens %d, got %v", maxTokens, withLimit.MaxTokens)
+	}
+
+	withoutLimit := providers[1].(ai.OpenAI)
+	if withoutLimit.MaxTokens != nil {
+		t.Errorf("Expected nil MaxTokens, got %d", *withoutLimit.MaxTokens)
 	}
 }
 

@@ -2,9 +2,13 @@ package ai
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
+	"strings"
 	"testing"
+
+	"github.com/openai/openai-go/responses"
 )
 
 // MockOpenAIClient is a mock implementation of OpenAIClient for testing
@@ -15,13 +19,15 @@ type MockOpenAIClient struct {
 	lastModel  string
 	lastInput  string
 	lastSystem *string
+	lastMaxOutputTokens *int64
 }
 
-func (m *MockOpenAIClient) CreateResponse(ctx context.Context, model, input string, instructions *string) (string, error) {
+func (m *MockOpenAIClient) CreateResponse(ctx context.Context, model, input string, instructions *string, maxOutputTokens *int64) (string, error) {
 	m.callCount++
 	m.lastModel = model
 	m.lastInput = input
 	m.lastSystem = instructions
+	m.lastMaxOutputTokens = maxOutputTokens
 	return m.response, m.err
 }
 
@@ -78,7 +84,7 @@ func (m *MockGeminiClient) SetError(err error)          { m.err = err }
 
 func TestNewOpenAI(t *testing.T) {
 	baseURL := "https://custom.openai.com"
-	provider := NewOpenAI("test-openai", "TEST_API_KEY", "gpt-4", &baseURL)
+	provider := NewOpenAI("test-openai", "TEST_API_KEY", "gpt-4", nil, &baseURL)
 
 	if provider.ConfigName != "test-openai" {
 		t.Errorf("expected ConfigName 'test-openai', got '%s'", provider.ConfigName)
@@ -95,21 +101,21 @@ func TestNewOpenAI(t *testing.T) {
 }
 
 func TestOpenAI_Name(t *testing.T) {
-	provider := NewOpenAI("my-openai", "API_KEY", "gpt-4", nil)
+	provider := NewOpenAI("my-openai", "API_KEY", "gpt-4", nil, nil)
 	if provider.Name() != "my-openai" {
 		t.Errorf("expected Name() to return 'my-openai', got '%s'", provider.Name())
 	}
 }
 
 func TestOpenAI_Type(t *testing.T) {
-	provider := NewOpenAI("test", "API_KEY", "gpt-4", nil)
+	provider := NewOpenAI("test", "API_KEY", "gpt-4", nil, nil)
 	if provider.Type() != "openai" {
 		t.Errorf("expected Type() to return 'openai', got '%s'", provider.Type())
 	}
 }
 
 func TestOpenAI_Send_MissingAPIKey(t *testing.T) {
-	provider := NewOpenAI("test", "NONEXISTENT_API_KEY_VAR", "gpt-4", nil)
+	provider := NewOpenAI("test", "NONEXISTENT_API_KEY_VAR", "gpt-4", nil, nil)
 
 	os.Unsetenv("NONEXISTENT_API_KEY_VAR")
 
@@ -129,6 +135,7 @@ func TestOpenAI_Send_Success(t *testing.T) {
 		"test-openai",
 		"TEST_OPENAI_API_KEY",
 		"gpt-4",
+		nil,
 		nil,
 		func(apiKey string, baseURL *string) OpenAIClient { return mock },
 	)
@@ -162,6 +169,7 @@ func TestOpenAI_Send_WithSystemPrompt(t *testing.T) {
 		"TEST_OPENAI_API_KEY",
 		"gpt-4",
 		nil,
+		nil,
 		func(apiKey string, baseURL *string) OpenAIClient { return mock },
 	)
 
@@ -187,6 +195,7 @@ func TestOpenAI_Send_ClientError(t *testing.T) {
 		"TEST_OPENAI_API_KEY",
 		"gpt-4",
 		nil,
+		nil,
 		func(apiKey string, baseURL *string) OpenAIClient { return mock },
 	)
 
@@ -199,6 +208,91 @@ func TestOpenAI_Send_ClientError(t *testing.T) {
 	}
 	if err.Error() != expectedErr.Error() {
 		t.Errorf("expected error '%v', got '%v'", expectedErr, err)
+	}
+}
+
+func TestOpenAI_Send_PassesMaxOutputTokens(t *testing.T) {
+	mock := &MockOpenAIClient{response: "ok"}
+	maxTokens := int64(64000)
+
+	provider := NewOpenAIWithClient(
+		"test-openai",
+		"TEST_OPENAI_API_KEY",
+		"gpt-4",
+		&maxTokens,
+		nil,
+		func(apiKey string, baseURL *string) OpenAIClient { return mock },
+	)
+
+	os.Setenv("TEST_OPENAI_API_KEY", "test-key")
+	defer os.Unsetenv("TEST_OPENAI_API_KEY")
+
+	if _, err := provider.Send("test prompt", nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if mock.lastMaxOutputTokens == nil || *mock.lastMaxOutputTokens != maxTokens {
+		t.Errorf("expected max output tokens %d, got %v", maxTokens, mock.lastMaxOutputTokens)
+	}
+}
+
+func parseResponse(t *testing.T, raw string) *responses.Response {
+	t.Helper()
+	var resp responses.Response
+	if err := json.Unmarshal([]byte(raw), &resp); err != nil {
+		t.Fatalf("failed to parse response fixture: %v", err)
+	}
+	return &resp
+}
+
+func TestOutputTextOrError_Completed(t *testing.T) {
+	resp := parseResponse(t, `{"status":"completed","incomplete_details":null,"output":[
+		{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Hello!","annotations":[]}]}]}`)
+
+	text, err := outputTextOrError(resp)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if text != "Hello!" {
+		t.Errorf("expected 'Hello!', got '%s'", text)
+	}
+}
+
+func TestOutputTextOrError_IncompleteWithNoText(t *testing.T) {
+	// Reasoning consumed the whole output budget, leaving an empty message
+	resp := parseResponse(t, `{"status":"incomplete","incomplete_details":{"reason":"max_output_tokens"},"output":[
+		{"type":"reasoning","content":[],"encrypted_content":"..."},
+		{"type":"message","role":"assistant","content":[{"type":"output_text","text":"","annotations":[]}]}]}`)
+
+	_, err := outputTextOrError(resp)
+	if err == nil {
+		t.Fatal("expected error for empty incomplete response")
+	}
+	if !strings.Contains(err.Error(), "max_output_tokens") {
+		t.Errorf("expected error to mention reason, got '%v'", err)
+	}
+}
+
+func TestOutputTextOrError_IncompleteWithText(t *testing.T) {
+	resp := parseResponse(t, `{"status":"incomplete","incomplete_details":{"reason":"max_output_tokens"},"output":[
+		{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Partial answer","annotations":[]}]}]}`)
+
+	text, err := outputTextOrError(resp)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.HasPrefix(text, "Partial answer") {
+		t.Errorf("expected partial text to be kept, got '%s'", text)
+	}
+	if !strings.Contains(text, "truncated") || !strings.Contains(text, "max_output_tokens") {
+		t.Errorf("expected truncation notice, got '%s'", text)
+	}
+}
+
+func TestOutputTextOrError_CompletedWithNoText(t *testing.T) {
+	resp := parseResponse(t, `{"status":"completed","incomplete_details":null,"output":[]}`)
+
+	if _, err := outputTextOrError(resp); err == nil {
+		t.Fatal("expected error for empty response")
 	}
 }
 

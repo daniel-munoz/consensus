@@ -166,7 +166,7 @@ func loadProviders(config *ConfigYaml) []Provider {
 	for _, pc := range config.Providers {
 		switch pc.Type {
 		case ProviderTypeOpenAI:
-			providers = append(providers, ai.NewOpenAI(pc.Name, pc.APIKeyVariable, pc.Model, pc.BaseURL))
+			providers = append(providers, ai.NewOpenAI(pc.Name, pc.APIKeyVariable, pc.Model, pc.MaxTokens, pc.BaseURL))
 		case ProviderTypeGemini:
 			providers = append(providers, ai.NewGemini(pc.Name, pc.APIKeyVariable, pc.Model, pc.BaseURL))
 		case ProviderTypeAnthropic:
